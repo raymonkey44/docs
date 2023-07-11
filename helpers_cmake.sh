@@ -41,8 +41,8 @@ function cmake_settings_setup(){
 	CMAKE_TARGET="Visual Studio 17 2022"
 	CMAKE_CONFIG_BINARY="cmake"
 	CMAKE_MAKE_BINARY="cmake"
-	CMAKE_MAKE_ADDL="--build \"${BLD_CONFIG_CMAKE_BUILD_DIR}\" --verbose"
-	CMAKE_INSTALL_ADDL=" --install \"${BLD_CONFIG_CMAKE_BUILD_DIR}\""
+	CMAKE_MAKE_ADDL="--build ${BLD_CONFIG_CMAKE_BUILD_DIR} --verbose"
+	CMAKE_INSTALL_ADDL=" --install ${BLD_CONFIG_CMAKE_BUILD_DIR}"
 	CMAKE_PREFIX_DIR="$BLD_CONFIG_INSTALL_FOLDER"
 	CMAKE_ADDL_FLAGS=""
 	CMAKE_CONFIG_CLI_CFLAGS="${CFLAGS}"
@@ -66,7 +66,7 @@ function cmake_settings_setup(){
 		;;
 
 	vs)
-		CMAKE_MAKE_ADDL+=" --config \"$BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO\""
+		CMAKE_MAKE_ADDL+=" --config $BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO"
 		;;
 	unix)
 		CMAKE_TARGET="Unix Makefiles"

@@ -126,7 +126,7 @@ function copy_pdbs(){
 
 declare -g ADDL_OUTPUT_MESSAGE=""
 function run_logged_make(){
-	echo "RUNNING logged build command sure you have a clean build as any pre-built items are not logged"
+	echo "Starting logged build run sure you have a clean build as any pre-built items are not logged"
 	CMD="make"
 	if [[ $# != 0 ]]; then
 		CMD="$1"

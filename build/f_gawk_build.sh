@@ -23,6 +23,8 @@ fi
 		echo "gnulib_tool_option_extras=\" --without-tests --symlink --m4-base=m4 --lib=libgawk --source-base=lib --cache-modules\"" >> bootstrap.conf
 		git mv m4 m4_orig
 		mkdir -p m4
+		mkdir -p pc/old
+		mv pc/* pc/old/ || true
 		pushd m4
 		cp -s -t . ../m4_orig/socket.m4 ../m4_orig/arch.m4 ../m4_orig/noreturn.m4 ../m4_orig/pma.m4 ../m4_orig/triplet-transformation.m4
 		popd
@@ -33,7 +35,7 @@ fi
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
 		touch .developing
 	else
-		rm .developing
+		rm .developing || true
 	fi
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "our_patch" ]]; then
 		apply_our_repo_patch; #looks in the patches folder for  repo_BUILD_NAME.patch and if found applies it.  Easy way to generate the patch from modified repo, go to your modified branch (make sure code committed) and run: git diff --color=never master > repo_NAME.patch
@@ -73,7 +75,9 @@ fi
 	if [[ $SKIP_STEP == "makefiles" ]]; then #not empty and not setting empty as this is only a skip to step
 		./config.status
 	fi
-
+	#not sure what resets this but we need to reapply
+	git checkout awklib/eg/lib/pwcat.c
+	git apply "${SCRIPT_FOLDER}/patches/repo_gawk.patch" --include=awklib/eg/lib/pwcat.c
 	if [[ -n "${LOG_MAKE_RUN}" ]]; then
 		run_logged_make;
 	fi

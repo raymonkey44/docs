@@ -35,11 +35,8 @@ fi
 	cmake_config_run $STATIC_ADD -DZLIB_INCLUDE_DIR="/tmp" -DZLIB_LIBRARY_DEBUG="" -DZLIB_LIBRARY_RELEASE=""
 
 	
-	if [[ -n "${LOG_MAKE_RUN}" ]]; then
-		run_logged_make cmake --build "${BLD_CONFIG_CMAKE_BUILD_DIR}" --config $BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO --verbose
-	fi
-
-	cmake --build "${BLD_CONFIG_CMAKE_BUILD_DIR}" --config $BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO --verbose
+	cd $BLD_CONFIG_SRC_FOLDER
+	cmake_make
 	cmake_install
 	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING ]]; then
 		sed -i -E 's#-(lpcre2-.)#-\1-static#g' $BLD_CONFIG_INSTALL_FOLDER/lib/pkgconfig/libpcre2-*.pc
