@@ -111,6 +111,7 @@ Dictionary<string,string> BuildTemplateDict(ConfigRead config, Opts opts){
 	var libs = opts.GetArrVal("libraries");
 	var compile = opts.GetArrVal("compile");
 	var define = opts.GetArrVal("define");
+	define = define.Select(a=>a.StartsWith("-D") ? a.Substring(2) : a).ToList();
 	var include = opts.GetArrVal("include");
 	var exclude = opts.GetArrVal("exclude");
 	ArrExpandWildcards(ROOT_DIR,compile);

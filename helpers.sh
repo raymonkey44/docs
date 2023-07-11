@@ -3,125 +3,34 @@ set -eo pipefail -o functrace
 shopt -s inherit_errexit
 #while we could export SHELLOPTS many scripts dont work well with pipefail enabled
 
-CALL_CMD="$1"
-CALL_SCRIPT_PATH="$2"
-SCRIPT_FOLDER="$(dirname "$(readlink -f "$BASH_SOURCE")")"
+declare -g SKIP_STEP="$1"
+declare -g CALL_SCRIPT_PATH="$(readlink -f "$0")"
+declare -g SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER:-$(dirname "$(CALL_SCRIPT_PATH)")}"
+declare -g LOG_MAKE_RUN=""
+declare -g LOG_MAKE_CONTINUE=0
+
+#full allows you to run all the steps including it, or resume earlier through it rather than just it
+case "$SKIP_STEP" in
+	log_raw_build|log)
+		LOG_MAKE_RUN="raw"
+		;;
+	log_raw_build_full|log_full)
+		LOG_MAKE_RUN="raw"
+		SKIP_STEP="$2"
+		LOG_MAKE_CONTINUE=1
+		;;
+	log_make)
+		LOG_MAKE_RUN="make"
+		;;
+	log_make_full)
+		LOG_MAKE_RUN="make"
+		SKIP_STEP="$2"
+		;;
+esac
+
+
 #if a env variable is completely undefined our changes wont be picked up unless past directly to the command or exported
 
-
-vcpkg_ensure_installed(){
-	echo CHECKING FOR $BLD_CONFIG_VCPKG_BIN
-	if [[ -f "${BLD_CONFIG_VCPKG_BIN}" ]]; then
-    	return
-	fi
-	mkdir -p "${BLD_CONFIG_VCPKG_DIR}"
-	cd "${BLD_CONFIG_VCPKG_DIR}"
-	git clone https://github.com/microsoft/vcpkg .
-	./bootstrap-vcpkg.bat
-}
-
-vcpkg_remove_package(){
-	vcpkg_ensure_installed
-	local TO_INSTALL=""
-	for TO_INSTALL in "$@"; do
-		mkdir -p "${BLD_CONFIG_VCPKG_BINARY_DIR}"
-		export VCPKG_DEFAULT_BINARY_CACHE="${BLD_CONFIG_VCPKG_BINARY_DIR}"
-		local INSTALL_ROOT=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "no_triplet")
-		local INSTALL_TRIPLET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "triplet") #this will have the triplet on it if strip is off
-		local INSTALL_TARGET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}") #triplet included when strip is off
-		mkdir -p "${INSTALL_TARGET}"
-		if [[ $BLD_CONFIG_VCPKG_STRIP_TRIPLET -eq 1 && ! -e "$INSTALL_TRIPLET" ]]; then
-			ln -s "${INSTALL_TARGET}" "$INSTALL_TRIPLET"
-		fi
-
-		#host triplet doesnt seem to work 100%
-		"${BLD_CONFIG_VCPKG_BIN}" remove "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" "--x-install-root=${INSTALL_ROOT}"
-
-	done
-}
-
-
-vcpkg_install_package(){ #if the first parameter after optionally --head is a function that function will be called on install failure
-	vcpkg_ensure_installed
-	local TO_INSTALL=""
-	local install_postfix=""
-	if [[ "$1" == "--head" ]]; then
-		shift;
-		install_postfix="--head --editable"
-	fi
-	local ON_FAIL;
-	if [ "$(type -t $1)" = "function" ]; then
-		ON_FAIL=$1;
-		shift;
-	fi
-	for TO_INSTALL in "$@"; do
-		mkdir -p "${BLD_CONFIG_VCPKG_BINARY_DIR}"
-		export VCPKG_DEFAULT_BINARY_CACHE="${BLD_CONFIG_VCPKG_BINARY_DIR}"
-		local INSTALL_ROOT=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "no_triplet")
-		local INSTALL_TRIPLET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}" "triplet") #this will have the triplet on it if strip is off
-		local INSTALL_TARGET=$(get_install_prefix_for_vcpkg_pkg "${TO_INSTALL}") #triplet included when strip is off
-		mkdir -p "${INSTALL_TARGET}"
-		if [[ $BLD_CONFIG_VCPKG_STRIP_TRIPLET -eq 1 && ! -e "$INSTALL_TRIPLET" ]]; then
-			ln -s "${INSTALL_TARGET}" "$INSTALL_TRIPLET" 
-		fi
-
-		local RUN_CMD=""
-		#host triplet doesnt seem to work 100%
-		if [ -z ${ON_FAIL+x} ]; then
-			"${BLD_CONFIG_VCPKG_BIN}" install "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" --host-triplet=${BLD_CONFIG_VCPKG_TRIPLET} --allow-unsupported "--x-install-root=${INSTALL_ROOT}" ${install_postfix}
-		else
-			"${BLD_CONFIG_VCPKG_BIN}" install "${TO_INSTALL}:${BLD_CONFIG_VCPKG_TRIPLET}" --host-triplet=${BLD_CONFIG_VCPKG_TRIPLET} --allow-unsupported "--x-install-root=${INSTALL_ROOT}" ${install_postfix} || {
-				$ON_FAIL
-				return;
-			}
-		fi
-		
-		local FILES=`find "${INSTALL_TARGET}" -name "*.pc"`
-		if [[ "${FILES}" != "" ]]; then
-			mapfile -t TO_FIX <<<$FILES
-			for fl in "${TO_FIX[@]}"; do
-				sed -i -E "s#^prefix=.+#prefix=${INSTALL_TARGET}#" "${fl}"
-			done
-		fi
-		local DEBUG_DIR="${INSTALL_TARGET}/debug"
-		if [[ -e "${DEBUG_DIR}" && $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
-			if [[ -e "${INSTALL_TARGET}/debug/lib/pkgconfig" && -e "${INSTALL_TARGET}/lib/pkgconfig" ]]; then #assume normal pkg config is fine avoid needing to recurse
-				rm -rf "${INSTALL_TARGET}/debug/lib/pkgconfig"
-				rmdir --ignore-fail-on-non-empty "${INSTALL_TARGET}/debug/lib"
-			fi
-			for fl in "$DEBUG_DIR"/*; do
-				if [[ -d "${fl}" ]]; then
-					local DIR_NAME="${fl##*/}"    # print everything after the final "/"
-					mv "${fl}"/* "${INSTALL_TARGET}/${DIR_NAME}/"
-					rmdir "${fl}"
-				else
-					mv "${fl}" "${INSTALL_TARGET}/"
-				fi
-			done
-
-			rmdir "${DEBUG_DIR}"
-		fi
-	done
-}
-get_install_prefix_for_vcpkg_pkg(){
-	local BLD_NAME=$1
-	local TRIPLET_FORCE=$2
-	# cheating rather than actually try to reparse templates
-	ADD_TRIPLET=""
-	if [[  (! $BLD_CONFIG_VCPKG_STRIP_TRIPLET -eq 1 && ! $TRIPLET_FORCE == "no_triplet") || $TRIPLET_FORCE == "triplet" ]]; then
-		ADD_TRIPLET="/${BLD_CONFIG_VCPKG_TRIPLET}"
-	fi
-	echo "${BLD_CONFIG_VCPKG_INSTALL_TARGET_BASEDIR}/${BLD_NAME}${ADD_TRIPLET}"
-}
-add_vcpkg_pkg_config(){
-	local PTH=""
-	#VCPKG_INSTALL_TARGET_BASEDIR
-	for var in "$@"; do
-		PTH=$(get_install_prefix_for_vcpkg_pkg "${var}")
-		PTH=$(convert_to_msys_path "${PTH}")
-		PKG_CONFIG_PATH="${PTH}/lib/pkgconfig:${PKG_CONFIG_PATH}";
-	done
-}
 pkg_config_manual_add(){
 	#pkg-config --list-package-names to get package names
 	echo $PKG_CONFIG_PATH
@@ -163,7 +72,7 @@ apply_our_repo_patch () {
 	local PATCH_NAME="${1:-$BLD_CONFIG_BUILD_NAME}"
 	PATCH_PATH="${WIN_SCRIPT_FOLDER}/patches/repo_${PATCH_NAME}.patch"
 	if [[ -f "${PATCH_PATH}" ]]; then
-		git apply "${PATCH_PATH}"
+		ex git apply "${PATCH_PATH}"
 	else
 		echo "Error apply_our_repo_patch called but can't find patch at: ${PATCH_PATH}" 1>&2;
 		exit 1
@@ -204,28 +113,60 @@ PreInitialize(){
 	ini_read;
 }
 
-
-
-function cmake_config_run(){
-	#echo -n "Running: cmake " 1>&2
-	#printf "%q " "$@" 1>&2
-	#echo $@
-	#echo ""
-	echo "Running cmake ${*@Q}" 1>&2
-	
-	#these almost certainly wont work   normally the static and release are prefixed by something
-	STATIC_VAL=0
-	SHARE_VAL=1
-	if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
-		STATIC_VAL=1
-		SHARE_VAL=0
+function make_install(){
+	make install "$@"
+	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
+		mkdir -p "${BLD_CONFIG_INSTALL_FOLDER}/bin"
+		find -name "*.pdb" | grep -v vc1 | xargs cp -t "${BLD_CONFIG_INSTALL_FOLDER}/bin" &>/dev/null || true
 	fi
-	cmake -G "Visual Studio 17 2022" --install-prefix "$BLD_CONFIG_INSTALL_FOLDER" -S . -B winbuild -DCMAKE_C_FLAGS_DEBUG:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_RELEASE:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING="${CFLAGS}" -DCMAKE_C_FLAGS_MINSIZEREL:STRING="${CFLAGS}" -DBUILD_STATIC:BOOL="${STATIC_VAL}" -DBUILD_SHARED:BOOL="${SHARE_VAL}" -DCMAKE_CONFIGURATION_TYPES:STRING="${BLD_CONFIG_CMAKE_BUILD_TARGET_AUTO}" -DCMAKE_BUILD_TYPE:STRING="${BLD_CONFIG_CMAKE_BUILD_TYPE_AUTO}" "$@" > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+}
+function copy_pdbs(){
+	ex find -name "*.pdb" | grep -v vc1 | xargs cp -t "${BLD_CONFIG_INSTALL_FOLDER}/bin" &>/dev/null || true
+}
+
+declare -g ADDL_OUTPUT_MESSAGE=""
+function run_logged_make(){
+	echo "RUNNING logged build command sure you have a clean build as any pre-built items are not logged"
+	CMD="make"
+	if [[ $# != 0 ]]; then
+		CMD="$1"
+		shift 1;
+	else
+		set - "-j1" "$@"
+	fi
+	OUTPUT_FILE=""
+	if [[ $LOG_MAKE_RUN == "make" ]]; then
+		OUTPUT_FILE="${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
+		"$CMD" --just-print "$@" | tee "${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
+	elif [[ $LOG_MAKE_RUN == "raw" ]]; then
+		OUTPUT_FILE="${BLD_CONFIG_LOG_RAW_BUILD_FILE}"
+
+		echo "" > "$BLD_CONFIG_LOG_RAW_BUILD_FILE"
+		echo -n `pwd` > "$BLD_CONFIG_LOG_RAW_BUILD_FILE".tmpcurdir
+		old_GNU_BUILD_WRAPPER_DEBUG="$GNU_BUILD_WRAPPER_DEBUG"
+		export GNU_BUILD_WRAPPER_DEBUG=1 GNU_BUILD_CMD_FILE="${BLD_CONFIG_LOG_RAW_BUILD_FILE}"
+		ex "$CMD" "$@"
+		unset GNU_BUILD_CMD_FILE
+		export GNU_BUILD_WRAPPER_DEBUG="$old_GNU_BUILD_WRAPPER_DEBUG"
+	else
+		echo "Logged make called but the type was not preset????" 1>&2
+		exit 1
+	fi
+	
+	ADDL_OUTPUT_MESSAGE="DONE ${COLOR_MINOR}BUILD FILE${COLOR_NONE} to \"${COLOR_MAJOR}${OUTPUT_FILE}${COLOR_NONE}\" suggest also copying the env file: \"${COLOR_MAJOR}${BLD_CONFIG_LOG_CONFIG_ENV_FILE}${COLOR_NONE}\""
+	echo -e $ADDL_OUTPUT_MESSAGE
+	if [[ $LOG_MAKE_RUN == "raw" ]]; then
+		unlink "$BLD_CONFIG_LOG_RAW_BUILD_FILE".tmpcurdir
+		unset GNU_BUILD_WRAPPER_DEBUG GNU_BUILD_CMD_FILE
+	fi
+	if [[ $LOG_MAKE_CONTINUE -eq 0 ]]; then
+		exit 0
+	fi
 }
 function configure_run(){
 	setup_build_env;
 	echo "Running ./configure ${config_cmd}" 1>&2
-	./configure $config_cmd  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
+	ex ./configure $config_cmd  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
 declare -g SETUP_BUILD_ENV_RUN=0
 function setup_build_env(){
@@ -235,9 +176,8 @@ function setup_build_env(){
 		echo "setup_build_env() called twice, this would cause some vars to stack to do including the prev value and also break caches" 1>&2
 		exit 1
 	fi
-	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]; then
-		ADL_LIB_FLAGS+=" -Xlinker setargv.obj"
-	fi
+	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
+	LINK_PATH="${LINK_PATH}bin/HostX64/x64/link.exe"
 	SETUP_BUILD_ENV_RUN=1
 	CL_PREFIX=""
 	USING_GNU_COMPILE_WRAPPER=0
@@ -246,32 +186,63 @@ function setup_build_env(){
 		gnulib_ensure_buildaux_scripts_copied
 		local gnu_compile_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/compile")
 		local gnu_arlib_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ar-lib")
+		local gnu_ldlink_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/ld-link")
 		CL_PREFIX="${gnu_compile_path} "
 		AR="${gnu_arlib_path} lib"
+		export MS_LINK="$LINK_PATH"
+		LINK_PATH="${gnu_ldlink_path} "
 		USING_GNU_COMPILE_WRAPPER=1
 	fi
+	XLINKER_CMD="-Xlinker"
+	if [[ $BLD_CONFIG_BUILD_WINDOWS_COMPILE_WRAPPERS -eq 1 && $USING_GNU_COMPILE_WRAPPER -eq 0 ]]; then
+		XLINKER_CMD=""
+	fi
+	if [[ $BLD_CONFIG_ADD_WIN_ARGV_LIB -eq 1 ]]; then
+		ADL_LIB_FLAGS+=" ${XLINKER_CMD} setargv.obj"
+	fi
+
 	config_cmd=$"--config-cache $BLD_CONFIG_CONFIG_CMD_DEFAULT $BLD_CONFIG_CONFIG_CMD_ADDL"
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq 1 ]]; then
 		config_cmd=$"$config_cmd $CONFIG_CMD_GNULIB_ADDL"
 
 	fi
-	
+	MSVC_DESIRED_LIB="msvcrt"
 	if [[ $BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS -eq 1 ]]; then
+		NO_DEFAULT_LIB_ARR=()
 		MSVC_RUNTIME="MD"
 		if [[ $BLD_CONFIG_PREFER_STATIC_LINKING -eq 1 ]]; then
+			MSVC_DESIRED_LIB="libcmt"
 			MSVC_RUNTIME="MT"
 		else
 			ADL_C_FLAGS+=" /LD" #passes /dll to linker
 			ADL_LIB_FLAGS+=" /DLL"
 		fi
 		if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
-			ADL_C_FLAGS+=" /D_DEBUG -DDEBUG ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}" #DEBUG isn't n actual normal MSVC debug flag but several common repos will use it so might as well declare
+			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_DEBUG_ADDL_CFLAGS} ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}"
 			ADL_LIB_FLAGS+=" /DEBUG"
+			if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "debug" ]]; then
+				NO_DEFAULT_LIB_ARR+=($MSVC_DESIRED_LIB)
+			fi
 			MSVC_RUNTIME+="d"
+			MSVC_DESIRED_LIB+="d"
 		else
 			ADL_C_FLAGS+=" /DNDEBUG ${BLD_CONFIG_BUILD_MSVC_CL_NDEBUG_OPTS}"
+			if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "debug" ]]; then
+				NO_DEFAULT_LIB_ARR+=("${MSVC_DESIRED_LIB}d")
+			fi
+		fi
+		if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "full" ]]; then
+			local ALL_LIBS=("libcmt" "libcmtd" "msvcrt" "msvcrtd")
+			for lib in "${ALL_LIBS[@]}"; do
+				if [[ "$lib" != "$MSVC_DESIRED_LIB" ]]; then
+					NO_DEFAULT_LIB_ARR+=($lib)
+				fi
+			done
 		fi
 		ADL_C_FLAGS+=" /${MSVC_RUNTIME}"
+		for lib in "${NO_DEFAULT_LIB_ARR[@]}"; do
+			ADL_C_FLAGS+=" ${XLINKER_CMD} -NODEFAULTLIB:${lib}"
+		done
 	fi
 	for warn in "${BLD_CONFIG_BUILD_MSVC_IGNORE_WARNINGS[@]}"; do
 		ADL_C_FLAGS+=" /wd${warn}"
@@ -284,20 +255,25 @@ function setup_build_env(){
 		STATIC_ADD+=" -static" #we shouldnt nneed to add -MT here
 	fi
 	if [[ $BLD_CONFIG_LOG_DEBUG_WRAPPERS -eq 1 ]]; then
-		export DEBUG_GNU_COMPILE_WRAPPER=1 DEBUG_GNU_LIB_WRAPPER=1
+		export GNU_BUILD_WRAPPER_DEBUG=1
 
 	fi
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT -eq 1 ]]; then
-		export COLOR_MINOR='\e[2;33m' COLOR_MINOR2='\e[2;36m' COLOR_MAJOR='\e[1;32m' COLOR_NONE='\e[0m'
+		export GNU_BUILD_WRAPPER_COLOR=1
 	fi
-	LINK_PATH=$(convert_to_universal_path "$VCToolsInstallDir")
-	LINK_PATH="${LINK_PATH}bin/HostX64/x64/link.exe"
-	export CXX="${CL_PREFIX}cl.exe${STATIC_ADD}" AR="$AR" CC="${CL_PREFIX}cl.exe${STATIC_ADD}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
+	CXX="${CL_PREFIX}cl.exe"
+	CL="${CL_PREFIX}cl.exe"
+	if [[ $BLD_CONFIG_BUILD_WINDOWS_COMPILE_WRAPPERS -eq 1 && $USING_GNU_COMPILE_WRAPPER -eq 0 ]]; then
+		CL="${WIN_SCRIPT_FOLDER}/wraps/cl.bat"
+		#LINK_PATH="\"${WIN_SCRIPT_FOLDER}/windows_command_wrapper.bat\" \"${LINK_PATH}\""
+		LINK_PATH="${WIN_SCRIPT_FOLDER}/wraps/link.bat"
+		#echo "LINK PATH IS: $LINK_PATH"
+		AR="${WIN_SCRIPT_FOLDER}/wraps/lib.bat"
+		STATIC_ADD="-showIncludes ${STATIC_ADD}"
+	fi
+
+	export CXX="${CL}" AR="$AR" CC="${CL}" CYGPATH_W="echo" LDFLAGS="$ADL_LIB_FLAGS ${LDFLAGS}" CFLAGS="${STATIC_ADD} ${ADL_C_FLAGS} ${CFLAGS}" LIBS="${BLD_CONFIG_CONFIG_DEFAULT_WINDOWS_LIBS} ${BLD_CONFIG_CONFIG_ADL_LIBS}" LD="${LINK_PATH}";
 	export -p > "$BLD_CONFIG_LOG_CONFIG_ENV_FILE";
-}
-function log_make() {
-	make --just-print --always-make "$@" 1> "${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
-	echo "Make commands saved to: ${BLD_CONFIG_LOG_MAKE_CMD_FILE}"
 }
 
 function msys_bins_move_end_path(){
@@ -344,7 +320,6 @@ function git_settings_to_env(){
 		export GIT_CONFIG_VALUE_${j}="$VALUE"
 	done
 }
-
 function startcommon(){
 	SetupIgnores;
 	DoTemplateSubs;
@@ -352,11 +327,22 @@ function startcommon(){
 	unset TEMP
 	mkdir -p "$BLD_CONFIG_SRC_FOLDER"
 	cd "$BLD_CONFIG_SRC_FOLDER"
-	if [[ $CALL_CMD == "gnulib_dump_patches" ]]; then
+	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT ]]; then
+		COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
+		COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
+		COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
+		COLOR_NONE="${COLOR_NONE:-\e[0m}"
+	else
+		COLOR_MINOR=""
+		COLOR_MINOR2=""
+		COLOR_MAJOR=""
+		COLOR_NONE=""	
+	fi
+	if [[ $SKIP_STEP == "gnulib_dump_patches" ]]; then
 		gnulib_dump_patches;
 		exit 0;
 	fi
-	if [[ $CALL_CMD == "gnulib_tool_py_remove_nmd_makefiles" ]]; then
+	if [[ $SKIP_STEP == "gnulib_tool_py_remove_nmd_makefiles" ]]; then
 		gnulib_tool_py_remove_nmd_makefiles;
 		exit 0;
 	fi
@@ -373,7 +359,9 @@ function startcommon(){
 	#else
 		#cd $BLD_CONFIG_BASE_FOLDER
 	#fi
-
+	if [[ -n "$BLD_CONFIG_CMAKE_STYLE" ]]; then
+		cmake_init;
+	fi
 }
 function exit_ok(){
 	trace_final
@@ -387,11 +375,28 @@ function exit_out(){
 	exit $EXIT_CODE
 }
 function finalcommon(){
-	echo DONE! find binaries in: $BLD_CONFIG_INSTALL_FOLDER/bin
+	echo -e DONE! ${COLOR_MINOR}Find output binaries${COLOR_NONE} in: ${COLOR_MAJOR}$BLD_CONFIG_INSTALL_FOLDER/bin${COLOR_NONE}
+	if [[ -n "${ADDL_OUTPUT_MESSAGE}" ]]; then
+		echo -e $ADDL_OUTPUT_MESSAGE
+	fi
+	if [[ "${LOG_MAKE_RUN}" -eq "raw" && -e "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" ]]; then
+		BUILD_OUT="$BLD_CONFIG_INSTALL_FOLDER/build"
+		mkdir -p "$BUILD_OUT"
+		cp -t "$BUILD_OUT" "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" "${BLD_CONFIG_LOG_CONFIG_ENV_FILE}" &>/dev/null || true
+	fi
 	trace_final;
 	return 0;
 }
 
+function ex(){
+	echo "${*@Q}" >&3
+	"$@"
+}
+
 . "$SCRIPT_FOLDER/helpers_ini.sh"
 . "$SCRIPT_FOLDER/helpers_gnu.sh"
+. "$SCRIPT_FOLDER/helpers_vcpkg.sh"
+. "$SCRIPT_FOLDER/helpers_cmake.sh"
 . "$SCRIPT_FOLDER/helpers_bashtrace.sh"
+
+PreInitialize;

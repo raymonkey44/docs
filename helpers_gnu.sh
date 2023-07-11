@@ -17,12 +17,13 @@ function gnulib_switch_to_master_and_patch(){
 		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
 	fi
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
-	git fetch
+	#git fetch
 	if [[ ! -z "$BLD_CONFIG_GNU_LIBS_BRANCH" ]]; then
 		git checkout "$BLD_CONFIG_GNU_LIBS_BRANCH"
 	fi
 	echo ++++++ Running on GNULIB commit `git rev-parse --abbrev-ref HEAD` `git rev-parse HEAD`
 	git checkout .
+	rm -f build-aux/wrapper_helper.sh build-aux/wrapper_helper.sh build-aux/ld-link #temporary as we add files rn
 	gnulib_patches;
 	#"gnulib"
 #	declare -a dirs=(".")
@@ -83,13 +84,10 @@ function gnulib_ensure_buildaux_scripts_copied(){
 		for flf in "${SCRIPTS_TO_ADD[@]}"; do
 			local gnu_path=$(convert_to_universal_path "${BLD_CONFIG_BUILD_AUX_FOLDER}/${flf}")
 			local SRC_PATH="${BLD_CONFIG_SRC_FOLDER}/gnulib/build-aux/${flf}"
-
-			if [[ -f "${SRC_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
-				if [[ ! -f "${gnu_path}" ]]; then
+			if [[ ! -e "${gnu_path}" ]]; then
+				if [[ -e "${SRC_PATH}" ]]; then #we have gnulib the build aux folder and ar-lib so hopefully its our patched version
 					cp "${SRC_PATH}" "${gnu_path}"
-				fi
-			else #no gnulib local so lets fetch it from remote
-				if [[ ! -f "${SRC_PATH}" ]]; then
+				else #no gnulib local so lets fetch it from remote
 					wget --quiet "https://raw.githubusercontent.com/mitchcapper/gnulib/ours_build_aux_handle_dot_a_libs/build-aux/${flf}" -O "${gnu_path}"
 				fi
 			fi
@@ -107,7 +105,9 @@ function gnulib_add_addl_modules_to_bootstrap(){
 		BOOT_FILE=`cat gnulib.modules | grep -v "^[A-Za-z0-9]"`;
 	else
 		#use \K to get exactly what we want here sed doesn't do \K so will just capture the group and sub that as grep doesnt do that
-		CUR_MODULES=`grep -Pzo "\n[ \t]*gnulib_modules\s*=\s*[\"'\x5c]+\K[^\"'\x5c]+" bootstrap.conf | sed 's/^ *//;s/ *$//'`
+		
+		CUR_MODULES=`grep -Pzo "\n[ \t]*gnulib_modules\s*=\s*[\"'\x5c]+\K[^\"'\x5c]+" bootstrap.conf  | sed 's/^ *//;s/ *$//' | tr -d '\0'`
+
 		BOOT_FILE=`sed -z -E "s#(\n[ \t]*gnulib_modules\s*=\s*['\"]+)[\n\x5c]*[^\"'\x5c]+#\1\nTOREPLACEZSTR\n#" bootstrap.conf  | sed ''`
 		INDENT="    "
 	fi
@@ -157,7 +157,7 @@ function gnulib_apply_patch(){
 	local patch=$1
 	local options=$2 #only valid option is skip_fixes right now
 
-	git apply --ignore-space-change --ignore-whitespace --verbose ${EXTRA} "$WIN_SCRIPT_FOLDER/patches/patches_GNULIB_${patch}.patch"
+	ex git apply --ignore-space-change --ignore-whitespace --verbose ${EXTRA} "$WIN_SCRIPT_FOLDER/patches/patches_GNULIB_${patch}.patch"
 
 }
 function gnulib_patches(){

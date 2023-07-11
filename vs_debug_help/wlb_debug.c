@@ -28,7 +28,10 @@ int MSVCAssertTmpSilenceAll() {
 int MSVCAssertTmpRestoreAll(int oldMode) {
 	return _CrtSetReportMode(_CRT_ASSERT, oldMode);
 }
-
+// If you still get errors make sure you are calling this late enough into your main, too 
+//void DisableDebugAssertAtExit() {
+//	at_exit(DisableDebugAssertPopup);
+//}
 void launchdebugger() {
 	char cmd[1024];
 	int pid = _getpid();

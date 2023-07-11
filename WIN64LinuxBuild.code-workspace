@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.json": "jsonc",
+			"config.h": "c",
+			"vmsdir.h": "c"
+		}
+	}
+}
