@@ -7,7 +7,7 @@ BLD_CONFIG_CONFIG_CMD_ADDL="" #--disable-nls --enable-static
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 #BLD_CONFIG_BUILD_DEBUG=1
 BLD_CONFIG_GNU_LIBS_USED=0;
-
+BLD_CONFIG_CMAKE_STYLE="best"
 function ourmain() {
 	startcommon;
 

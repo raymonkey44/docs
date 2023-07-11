@@ -76,8 +76,10 @@ fi
 		./config.status
 	fi
 	#not sure what resets this but we need to reapply
-	git checkout awklib/eg/lib/pwcat.c
-	git apply "${SCRIPT_FOLDER}/patches/repo_gawk.patch" --include=awklib/eg/lib/pwcat.c
+	rm awklib/pwcat.c
+	ln -s awklib/eg/lib/pwcat.c awklib/
+	#git checkout awklib/eg/lib/pwcat.c
+	#git apply "${SCRIPT_FOLDER}/patches/repo_gawk.patch" --include=awklib/eg/lib/pwcat.c
 	if [[ -n "${LOG_MAKE_RUN}" ]]; then
 		run_logged_make;
 	fi
