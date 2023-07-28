@@ -1,0 +1,432 @@
+diff --git a/build-aux/ar-lib b/build-aux/ar-lib
+index 17de55e79c..33f0b676ef 100755
+--- a/build-aux/ar-lib
++++ b/build-aux/ar-lib
+@@ -1,6 +1,11 @@
+ #! /bin/sh
+ # Wrapper for Microsoft lib.exe
++set -eo pipefail
+ 
++# Wrapper for compilers which do not understand '-c -o'.
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
++	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
++fi
+ me=ar-lib
+ scriptversion=2019-07-04.01; # UTC
+ 
+@@ -29,6 +34,14 @@ scriptversion=2019-07-04.01; # UTC
+ # bugs to <bug-automake@gnu.org> or send patches to
+ # <automake-patches@gnu.org>.
+ 
++func_ar_run ()
++{
++  if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++  	wrapper_exec $AR -NOLOGO "$@"
++  else
++		 exec $AR -NOLOGO "$@"
++  fi
++}
+ 
+ # func_error message
+ func_error ()
+@@ -49,6 +62,10 @@ func_file_conv ()
+     / | /[!/]*) # absolute file, and not a UNC file
+       if test -z "$file_conv"; then
+ 	# lazily determine how to convert abs files
++        OS_SYS=`uname -o`
++        if [[ "$OS_SYS" == "Msys" ]]; then
++            file_conv=cygwin
++        else
+ 	case `uname -s` in
+ 	  MINGW*)
+ 	    file_conv=mingw
+@@ -60,6 +77,7 @@ func_file_conv ()
+ 	    file_conv=wine
+ 	    ;;
+ 	esac
++        fi
+       fi
+       case $file_conv in
+ 	mingw)
+@@ -92,7 +110,7 @@ func_at_file ()
+ 
+   for member
+   do
+-    $AR -NOLOGO $operation:"$member" "$archive" || exit $?
++    func_ar_run $operation:"$member" "$archive"
+   done
+ }
+ 
+@@ -205,7 +223,7 @@ if test -n "$delete"; then
+         ;;
+       *)
+         func_file_conv "$1"
+-        $AR -NOLOGO -REMOVE:"$file" "$archive" || exit $?
++        func_ar_run -REMOVE:"$file" "$archive"
+         ;;
+     esac
+   done
+@@ -223,15 +241,15 @@ elif test -n "$extract"; then
+           ;;
+         *)
+           func_file_conv "$1"
+-          $AR -NOLOGO -EXTRACT:"$file" "$archive" || exit $?
++          func_ar_run -EXTRACT:${COLOR_MAJOR}"$file"${COLOR_NONE} "$archive"
+           ;;
+       esac
+     done
+   else
+-    $AR -NOLOGO -LIST "$archive" | tr -d '\r' | sed -e 's/\\/\\\\/g' \
++    func_ar_run -LIST "$archive" | tr -d '\r' | sed -e 's/\\/\\\\/g' \
+       | while read member
+         do
+-          $AR -NOLOGO -EXTRACT:"$member" "$archive" || exit $?
++          func_ar_run -EXTRACT:"$member" "$archive"
+         done
+   fi
+ 
+@@ -262,14 +280,14 @@ elif test -n "$quick$replace"; then
+   done
+ 
+   if test -n "$orig_archive"; then
+-    $AR -NOLOGO -OUT:"$archive" "$orig_archive" "$@" || exit $?
++    func_ar_run -OUT:${COLOR_MAJOR}"$archive"${COLOR_NONE} ${COLOR_MAJOR}"$orig_archive"${COLOR_NONE} "$@"
+   else
+-    $AR -NOLOGO -OUT:"$archive" "$@" || exit $?
++    func_ar_run -OUT:${COLOR_MAJOR}"$archive"${COLOR_NONE} "$@"
+   fi
+ 
+ elif test -n "$list"; then
+   if test ! -f "$orig_archive"; then
+     func_error "archive not found"
+   fi
+-  $AR -NOLOGO -LIST "$archive" || exit $?
++  func_ar_run -LIST ${COLOR_MAJOR}"$archive"${COLOR_NONE}
+ fi
+diff --git a/build-aux/compile b/build-aux/compile
+index ba883b54aa..56fc436ae0 100755
+--- a/build-aux/compile
++++ b/build-aux/compile
+@@ -1,5 +1,10 @@
+ #! /bin/sh
++set -eo pipefail
++
+ # Wrapper for compilers which do not understand '-c -o'.
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
++	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
++fi
+ 
+ scriptversion=2018-03-07.03; # UTC
+ 
+@@ -49,6 +54,10 @@ func_file_conv ()
+     / | /[!/]*) # absolute file, and not a UNC file
+       if test -z "$file_conv"; then
+ 	# lazily determine how to convert abs files
++        OS_SYS=`uname -o`
++        if [[ "$OS_SYS" == "Msys" ]]; then
++            file_conv=cygwin
++        else
+ 	case `uname -s` in
+ 	  MINGW*)
+ 	    file_conv=mingw
+@@ -61,6 +70,7 @@ func_file_conv ()
+ 	    ;;
+ 	esac
+       fi
++      fi
+       case $file_conv/,$2, in
+ 	*,$file_conv,*)
+ 	  ;;
+@@ -91,37 +101,70 @@ func_cl_dashL ()
+   linker_opts="$linker_opts -LIBPATH:$file"
+ }
+ 
++function GetLibNameIfInDir() {
++	local lib=$1
++	local dir=$2
++	local dir_in_libpath=$3
++	local shared=$4
++	FULL_LIB_NAME=''
++
++	local TRY_NAMES=("${lib}.lib" "${lib}lib.lib" "lib${lib}.a" "lib${lib}.lib" "${lib}")
++	if $shared; then
++		TRY_NAMES+="${lib}.dll.lib"; #prefer dynamic last
++		#TRY_NAMES=("$lib.dll.lib" "${TRY_NAMES[@]}");
++	else
++		TRY_NAMES=("${lib}static.lib" "${lib}libstatic.lib" "${lib}-static.lib" "${lib}lib-static.lib" "${lib}_static.lib" "${lib}lib_static.lib" "${TRY_NAMES[@]}");
++	fi
++	for name in "${TRY_NAMES[@]}"; do
++		if test -f "${dir}/${name}"; then
++			if [ $dir_in_libpath -eq 1 ]; then
++				FULL_LIB_NAME="$name"
++			else
++				FULL_LIB_NAME="${dir}/${name}"
++			fi
++			return 0;
++		fi
++	done
++}
++
+ # func_cl_dashl library
+ # Do a library search-path lookup for cl
+ func_cl_dashl ()
+ {
+-  lib=$1
+-  found=no
+-  save_IFS=$IFS
+-  IFS=';'
+-  for dir in $lib_path $LIB
+-  do
+-    IFS=$save_IFS
+-    if $shared && test -f "$dir/$lib.dll.lib"; then
+-      found=yes
+-      lib=$dir/$lib.dll.lib
+-      break
+-    fi
+-    if test -f "$dir/$lib.lib"; then
+-      found=yes
+-      lib=$dir/$lib.lib
+-      break
+-    fi
+-    if test -f "$dir/lib$lib.a"; then
+-      found=yes
+-      lib=$dir/lib$lib.a
+-      break
+-    fi
+-  done
++	lib=$1
++	found=no
++	save_IFS=$IFS
++	IFS=';'
++	FULL_LIB_NAME='' #incase no lib_paths we need to set this so the previous lib doesn't get used in the next check
++	for dir in $lib_path; do
++		IFS=$save_IFS
++		GetLibNameIfInDir "$lib" "$dir" 1 "$shared"
++		if [ ! -z "$FULL_LIB_NAME" ]; then
++			break
++		fi
++	done
++	if [ -z "$FULL_LIB_NAME" ]; then
++		IFS=';'
++		for dir in $LIB; do
++			IFS=$save_IFS
++			#seems like we should be able to leave off LIB dirs as cl.exe will incldue them anyway
++			GetLibNameIfInDir "$lib" "$dir" 1 "$shared"
++			if [ ! -z "$FULL_LIB_NAME" ]; then
++				break
++			fi
++		done
++	fi
++	if [ ! -z "$FULL_LIB_NAME" ]; then
++		found=yes
++		lib="$FULL_LIB_NAME"
++	fi
++
+   IFS=$save_IFS
+ 
+   if test "$found" != yes; then
+-    lib=$lib.lib
++	if [[ "$lib" != *.lib ]]; then
++    	lib="$lib.lib"
++	fi	
+   fi
+ }
+ 
+@@ -132,6 +175,7 @@ func_cl_wrapper ()
+   # Assume a capable shell
+   lib_path=
+   shared=:
++  STD_DECLARE=""
+   linker_opts=
+   for arg
+   do
+@@ -145,16 +189,21 @@ func_cl_wrapper ()
+ 	  case $2 in
+ 	    *.o | *.[oO][bB][jJ])
+ 	      func_file_conv "$2"
+-	      set x "$@" -Fo"$file"
++	      set x "$@" -Fo${COLOR_MAJOR}"$file"${COLOR_NONE}
+ 	      shift
+ 	      ;;
+ 	    *)
+ 	      func_file_conv "$2"
+-	      set x "$@" -Fe"$file"
++	      set x "$@" -Fe${COLOR_MAJOR}"$file"${COLOR_NONE}
+ 	      shift
+ 	      ;;
+ 	  esac
+ 	  ;;
++	-include)
++		eat=1
++	  	set x "$@" -FI${COLOR_MINOR}"$2"${COLOR_NONE}
++	  	shift
++		;;
+ 	-I)
+ 	  eat=1
+ 	  func_file_conv "$2" mingw
+@@ -187,6 +236,21 @@ func_cl_wrapper ()
+ 	-static)
+ 	  shared=false
+ 	  ;;
++	-std=*)
++	  std="${1#-std=}"
++	  if [[ "$std" == "c99" ]]; then
++	  	std="c11"
++	  fi
++	  set x "$@" -std:"$std"
++	  if [[ "$std" == "c11" || "$std" == "c17" ]]; then #note that MSVC never supported dynamic arrays as it never supported c99 fully and c11 made them optional.  If your configure has a dynamic array test it will fail still.
++			STD_DECLARE="/Zc:__STDC__"
++	  fi
++	  shift
++	  ;;
++	-[Ff][pP][iI][cC] | -[Ff][Nn][Oo]-[Pp][Ii][Cc])
++	  ;;
++	-W[a-zA-Z][a-zA-Z-][a-zA-Z-][a-zA-Z-][a-zA-Z-]*) #word based warnings other than all are not supported by msvc
++	  ;;
+ 	-Wl,*)
+ 	  arg=${1#-Wl,}
+ 	  save_ifs="$IFS"; IFS=','
+@@ -200,18 +264,25 @@ func_cl_wrapper ()
+ 	  eat=1
+ 	  linker_opts="$linker_opts $2"
+ 	  ;;
++	-version | --version)
++	  echo "MSVC CL" `cl 2>&1 1>/dev/null | grep -o -E "[0-9]+[.][0-9.]+"`
++	  exit
++	  ;;
+ 	-*)
+ 	  set x "$@" "$1"
+ 	  shift
+ 	  ;;
+-	*.cc | *.CC | *.cxx | *.CXX | *.[cC]++)
++	*.cc | *.CC | *.cxx | *.CXX | *.[cC]++ | *.S)
+ 	  func_file_conv "$1"
+-	  set x "$@" -Tp"$file"
++	  set x "$@" -Tp "$file"
+ 	  shift
+ 	  ;;
++	*.a)
++	  linker_opts="$linker_opts $1"
++	  ;;
+ 	*.c | *.cpp | *.CPP | *.lib | *.LIB | *.Lib | *.OBJ | *.obj | *.[oO])
+ 	  func_file_conv "$1" mingw
+-	  set x "$@" "$file"
++	  set x "$@" "${COLOR_MINOR2}$file${COLOR_NONE}"
+ 	  shift
+ 	  ;;
+ 	*)
+@@ -225,8 +296,12 @@ func_cl_wrapper ()
+   if test -n "$linker_opts"; then
+     linker_opts="-link$linker_opts"
+   fi
+-  exec "$@" $linker_opts
+-  exit 1
++  if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++  	wrapper_exec "$@" $STD_DECLARE $linker_opts
++  else
++		exec "$@" $STD_DECLARE $linker_opts
++  fi
++
+ }
+ 
+ eat=
+diff --git a/build-aux/ld-link b/build-aux/ld-link
+new file mode 100644
+index 0000000000..3b57d4e63b
+--- /dev/null
++++ b/build-aux/ld-link
+@@ -0,0 +1,45 @@
++#!/bin/bash
++set -eo pipefail
++
++# Wrapper for compilers which do not understand '-c -o'.
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 || -v COLOR_MAJOR ]]; then #if COLOR_MAJOR is set we want to include the wrapper so we can unset it otherwise would screw cmd output
++	. "$(dirname "$(readlink -f "$0")")/wrapper_helper.sh" "$@"
++fi
++
++convert_from_msys_path () {
++	local WPATH=$1
++	if ! [ -z ${MSYS+x} ]; then
++		WPATH=`cygpath -m "$WPATH"`
++	fi
++	echo $WPATH
++}
++
++# with the other wrappers you can use cl or lib  as they genreally wont collide with msys but link.exe does 
++if [[ ! -v MS_LINK ]]; then
++	MS_LINK=`cygpath.exe -m "$VCToolsInstallDir"`
++	MS_LINK="${LINK_PATH}bin/HostX64/x64/link.exe"
++	if [[ ! -e "$MS_LINK" ]]; then
++		MS_LINK=`which link.exe -a | grep "MSVC" | head`
++		MS_LINK=$(convert_from_msys_path "$MS_LINK")
++	fi
++	if [[ ! -e "$MS_LINK" ]]; then
++		MS_LINK="link.exe"
++	fi
++fi
++
++for file in "$@"; do
++	if [[ $file = /[A-Za-z]/* ]]; then
++		file="${COLOR_MAJOR}\"$(convert_from_msys_path "$file")\"${COLOR_NONE}"
++	elif [[ -e "$file" ]]; then # we want to colorize above incase its the output file
++		file="${COLOR_MAJOR}\"$file\"${COLOR_NONE}"
++	fi
++	
++    set -- "$@" "$file"
++    shift
++done
++echo "HI MSLINK IS: $MS_LINK"
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++	wrapper_exec "$MS_LINK" -NOLOGO "$@"
++else
++	exec "$MS_LINK" -NOLOGO "$@"
++fi
+diff --git a/build-aux/wrapper_helper.sh b/build-aux/wrapper_helper.sh
+new file mode 100644
+index 0000000000..22b2022db1
+--- /dev/null
++++ b/build-aux/wrapper_helper.sh
+@@ -0,0 +1,43 @@
++#!/bin/bash
++set -eo pipefail
++shopt -s inherit_errexit
++
++function clear_colors {
++	unset COLOR_MINOR COLOR_MINOR2 COLOR_MAJOR COLOR_NONE
++}
++
++CALLER_NAME=`basename ${0^^}`
++if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then
++	if [[ $GNU_BUILD_WRAPPER_COLOR -eq 	1 ]]; then
++		COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
++		COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
++		COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
++		COLOR_NONE="${COLOR_NONE:-\e[0m}"
++	else
++		clear_colors;
++	fi
++	echo -e ${COLOR_MINOR}GNU ${CALLER_NAME} INPUT${COLOR_NONE}: "$@" 1>&2
++else
++	clear_colors;
++fi
++
++
++function wrapper_exec {	
++	shopt -s extglob
++	if [[ -v GNU_BUILD_CMD_FILE ]]; then
++		LAST_PWD_FILE="${GNU_BUILD_CMD_FILE}.tmpcurdir"
++		CUR_PWD=`pwd`
++		if [[ ! -e "$LAST_PWD_FILE" || "$CUR_PWD" != "`cat $LAST_PWD_FILE`" ]]; then
++			echo -e cd "$CUR_PWD" >> "$GNU_BUILD_CMD_FILE"
++			echo -n $CUR_PWD > "$LAST_PWD_FILE"
++		fi
++		echo -e "${@//'\e'\[*([0-9;])m/}" >> "$GNU_BUILD_CMD_FILE"
++	fi
++	if [[ $GNU_BUILD_WRAPPER_DEBUG -eq 1 ]]; then	
++		echo -e "${COLOR_MINOR}GNU ${CALLER_NAME} OUTPUT${COLOR_NONE}: " "$@" $STD_DECLARE $linker_opts 1>&2
++	fi
++	exec "${@//'\e'\[*([0-9;])m/}"  #strip ansi color strings out
++	shopt -u extglob
++
++}
++

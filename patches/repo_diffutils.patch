@@ -1,0 +1,14 @@
+diff --git a/src/util.c b/src/util.c
+index ea4a2b8..a471dcc 100644
+--- a/src/util.c
++++ b/src/util.c
+@@ -280,7 +280,9 @@ process_signals (void)
+       if (stops)
+         {
+           stop_signal_count = stops - 1;
++#ifndef _WIN32
+           sig = SIGSTOP;
++#endif
+         }
+       else
+ 	{
