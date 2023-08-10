@@ -112,4 +112,4 @@ add_vcpkg_pkg_config(){
 		PTH=$(convert_to_msys_path "${PTH}")
 		PKG_CONFIG_PATH="${PTH}/lib/pkgconfig:${PKG_CONFIG_PATH}";
 	done
-}
+} 
