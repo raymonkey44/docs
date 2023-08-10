@@ -28,7 +28,24 @@ case "$SKIP_STEP" in
 		;;
 esac
 
-
+function git_stash_cur_work_discard_staged_work(){
+	git stash --keep-index --include-untracked -m "WLB_TMP_STASH" #save anything they may have changed
+	STASH_NAME=`git stash list | grep -o "WLB_TMP_STASH" || true`
+	git reset #unstage all our staged old patch items
+	git diff --ignore-submodules --color=never 
+	APPEND="$(basename -s .git `git config --get remote.origin.url`)_WLBDISCARD.patch"
+	TMPFILE=`mktemp --suffix=$APPEND`
+	TMPFILE=$(convert_to_universal_path "$TMPFILE")
+	git diff --ignore-submodules --color=never --output="$TMPFILE"
+	git checkout .
+}
+function git_stash_stage_patches_and_restore_cur_work(){
+	git add -u .
+	if [[ "$STASH_NAME" != "" ]]; then
+		git stash apply stash^{/$STASH_NAME}
+		STASH_NAME=""
+	fi
+}
 #if a env variable is completely undefined our changes wont be picked up unless past directly to the command or exported
 
 pkg_config_manual_add(){
@@ -72,7 +89,9 @@ apply_our_repo_patch () {
 	local PATCH_NAME="${1:-$BLD_CONFIG_BUILD_NAME}"
 	PATCH_PATH="${WIN_SCRIPT_FOLDER}/patches/repo_${PATCH_NAME}.patch"
 	if [[ -f "${PATCH_PATH}" ]]; then
+		git_stash_cur_work_discard_staged_work
 		git_apply_patch "${PATCH_PATH}"
+		git_stash_stage_patches_and_restore_cur_work
 	else
 		echo "Error apply_our_repo_patch called but can't find patch at: ${PATCH_PATH}" 1>&2;
 		exit 1
@@ -260,7 +279,8 @@ function setup_build_env(){
 			ADL_LIB_FLAGS+=" /DLL"
 		fi
 		if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
-			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_DEBUG_ADDL_CFLAGS} ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS}"
+		#the xlinker debug here is mostly needed for libtool which wont recognize it otherwise
+			ADL_C_FLAGS+=" /D_DEBUG ${BLD_CONFIG_BUILD_DEBUG_ADDL_CFLAGS} ${BLD_CONFIG_BUILD_MSVC_CL_DEBUG_OPTS} ${XLINKER_CMD} /DEBUG ${XLINKER_CMD} -ZI ${XLINKER_CMD} -Zf ${XLINKER_CMD} -FS"
 			ADL_LIB_FLAGS+=" /DEBUG"
 			if [[ "$BUILD_MSVC_NO_DEFAULT_LIB" == "debug" ]]; then
 				NO_DEFAULT_LIB_ARR+=($MSVC_DESIRED_LIB)
@@ -376,13 +396,13 @@ function git_settings_to_env(){
 		IFS=' ' read -ra KVP <<< "$SETTING"
 		NAME="${KVP[0]}"
 		VALUE="${KVP[1]}"
-		if [[ $name -eq "" ]]; then
+		if [[ "$NAME" == "" ]]; then
 			continue;
 		fi
 
 		export GIT_CONFIG_KEY_${GIT_CONFIG_COUNT}="$NAME"
 		export GIT_CONFIG_VALUE_${GIT_CONFIG_COUNT}="$VALUE"
-		(( GIT_CONFIG_COUNT++ ))
+		(( ++GIT_CONFIG_COUNT ))
 	done
 	export GIT_CONFIG_COUNT
 }

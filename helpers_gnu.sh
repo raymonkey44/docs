@@ -9,6 +9,7 @@ function gnulib_dump_patches(){
 	done
 	echo "ScriptRes=[$STROUT]" >> "$GITHUB_OUTPUT"
 }
+
 function gnulib_switch_to_master_and_patch(){
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ $BLD_CONFIG_GNU_LIBS_USE_GNULIB_TOOL_PY -eq 1 ]]; then
@@ -17,18 +18,17 @@ function gnulib_switch_to_master_and_patch(){
 		sed -i -E "s#(gnulib_tool=.+gnulib-tool).py\$#\1#" bootstrap
 	fi
 	cd $BLD_CONFIG_SRC_FOLDER/gnulib
-	#git fetch
+
+	#we do this process to make it easier to tell what changes we have actually made vs what changes were from our patches
+
+	git_stash_cur_work_discard_staged_work
+	
 	if [[ ! -z "$BLD_CONFIG_GNU_LIBS_BRANCH" ]]; then
 		git checkout "$BLD_CONFIG_GNU_LIBS_BRANCH"
 	fi
 	echo ++++++ Running on GNULIB commit `git rev-parse --abbrev-ref HEAD` `git rev-parse HEAD`
-	git checkout .
-	rm -f build-aux/wrapper_helper.sh build-aux/wrapper_helper.sh build-aux/ld-link #temporary as we add files rn
+	rm -f build-aux/wrapper_helper.sh build-aux/wrapper_helper.sh build-aux/ld-link #temporary as we add files rn that the normal checkout clean doesn't cleanup
 	gnulib_patches;
-	#"gnulib"
-#	declare -a dirs=(".")
-#	for do_dir in "${dirs[@]}"
-#	do
 #	:
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -f "Makefile.am" ]]; then
@@ -76,6 +76,8 @@ function gnulib_switch_to_master_and_patch(){
 	fi
 		#echo "DBGRAN cat Makefile.am | grep $SUBDIR_REGEX ORIG LINE WAS: $ORIG_LINE NOW: $FINAL_LINE final sed cmd was: " sed -i "s/${SUBDIR_REGEX}.+/$FINAL_LINE/g" Makefile.am
 	#done
+	
+	git_stash_stage_patches_and_restore_cur_work
 }
 function gnulib_ensure_buildaux_scripts_copied(){
 	FORCED=0

@@ -94,9 +94,9 @@ _failure() {
 	set +xv # turns off debug logging, just in case
 	HAVE_ERR_TRAP="$1"
 
-	# for i in 0 1 2 3 4 5; do
-	#  	echo "$i: ${BASH_SOURCE[$i]}:${FUNCNAME[$i]}:${BASH_LINENO[$i]}"
-	# done
+	#  for i in 0 1 2 3 4 5; do
+	#   	echo "$i: ${BASH_SOURCE[$i]}:${FUNCNAME[$i]}:${BASH_LINENO[$i]}"
+	#  done
 	DBG_OUT_STR="" #we concat onto a string to avoid other input (ie postcmdlog stdouting in the middle of the trace)
 	DBG_OUT_STR_FINAL="" #for color escape needed
 	if [[ $- =~ e && ${ERR_CODE} != 0 ]];	then

@@ -28,11 +28,12 @@ int MSVCAssertTmpSilenceAll() {
 int MSVCAssertTmpRestoreAll(int oldMode) {
 	return _CrtSetReportMode(_CRT_ASSERT, oldMode);
 }
-// If you still get errors make sure you are calling this late enough into your main, too 
-//void DisableDebugAssertAtExit() {
-//	at_exit(DisableDebugAssertPopup);
-//}
+
 void launchdebugger() {
+	if (IsDebuggerPresent()) {
+		DebugBreak();
+		return;
+	}
 	char cmd[1024];
 	int pid = _getpid();
 	char spid[50];
@@ -233,6 +234,16 @@ int _dbglog(int retval, __DbgLogType_t LogType, int lineno, const char* file, co
 }
 #include <stdio.h>
 #include <stdlib.h>
+// If you still get errors make sure you are calling this late enough into your main atexit is LIFO
+#ifndef DisableDebugAssertAtExit
+void DisableDebugAssertAtExit() {
+	atexit(DisableDebugAssertPopup);
+}
+#endif
+#ifdef WLB_DISABLE_DEBUG_ASSERT_AT_EXIT
+
+
+#endif
 
 #define CRT_REPORT_MODE_NOTSET -999
 static int GetCrtReportMode(const char* env_name) {

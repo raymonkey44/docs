@@ -1079,7 +1079,7 @@ index b72c99ad..fda4d6fc 100644
  
  				if (renamed) {
 diff --git a/src/wget.c b/src/wget.c
-index d98e1aeb..fbe408d4 100644
+index d98e1aeb..c42d4b86 100644
 --- a/src/wget.c
 +++ b/src/wget.c
 @@ -43,6 +43,7 @@
@@ -1112,7 +1112,23 @@ index d98e1aeb..fbe408d4 100644
  						}
  						if (!(fpout = fopen(conversion->filename, "wb")))
  							wget_error_printf(_("Failed to write open %s (%d)"), conversion->filename, errno);
-@@ -3369,32 +3376,46 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
+@@ -1373,8 +1380,14 @@ int main(int argc, const char **argv)
+ 			config.progress = PROGRESS_TYPE_NONE;
+ 		}
+ 	}
++	int is_tty = isatty(STDOUT_FILENO);
++#ifdef _WIN32 //if the windows console doesn't support VT codes treat it as if it wasnt a tty
++	DWORD mode;
++	if (! GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode) || (mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0)
++		is_tty=0;
++#endif
+ 
+-	if (config.progress != PROGRESS_TYPE_NONE && !isatty(STDOUT_FILENO) && !config.force_progress) {
++	if (config.progress != PROGRESS_TYPE_NONE && !is_tty && !config.force_progress) {
+ 		config.progress = PROGRESS_TYPE_NONE;
+ 	}
+ 
+@@ -3369,32 +3382,46 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
  		flag = O_EXCL;
  
  		if (config.backups) {
@@ -1165,7 +1181,7 @@ index d98e1aeb..fbe408d4 100644
  			if (fd >= 0) {
  				size_t rc;
  				if ((unsigned long long) size > max_partial_content)
-@@ -3419,17 +3440,19 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
+@@ -3419,17 +3446,19 @@ static int WGET_GCC_NONNULL((1)) prepare_file(wget_http_response *resp, const ch
  		if (unlink(fname) < 0 && errno != ENOENT) {
  			error_printf(_("Failed to unlink '%s' (errno=%d)\n"), fname, errno);
  			set_exit_status(EXIT_STATUS_IO);
