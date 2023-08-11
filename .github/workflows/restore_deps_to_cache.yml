@@ -117,4 +117,4 @@ jobs:
     #     key: ${{ inputs.BuildPkg }}
     - name: Debug Session
       if: ${{ failure() }}
-      run: ${{ github.workspace }}/.github/debug_ssh_start.ps1
+      run: D:/a/docs/docs/.github/debug_ssh_start.ps1
