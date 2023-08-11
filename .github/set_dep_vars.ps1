@@ -6,10 +6,7 @@ $arr=($env:DEPS).split()
 $cnt=1
 foreach ($dep in $arr) {
 	if ($dep){
-		Write-Host Running "Dep$($cnt)Name=$dep >>  $env:GITHUB_OUTPUT"
 		echo "Dep$($cnt)Name=$dep" >> $env:GITHUB_OUTPUT
-		$cnt++
-		
+		$cnt++		
 	}
 }
-cat $env:GITHUB_OUTPUT
