@@ -46,7 +46,7 @@ jobs:
       run: ${{ github.workspace }}\.github\set_dep_vars.ps1
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep1Name }}
-      uses: mitchcapper/action-download-artifact@290009faaeff686181a4cc1b4f980142603c9a7
+      uses: mitchcapper/action-download-artifact@6290009faaeff686181a4cc1b4f980142603c9a7
       if: ${{ steps.vars.outputs.Dep1Name && steps.cachecheck.outputs.cache-hit != 'true' }}
       with:
         name: ${{ steps.vars.outputs.Dep1Name }}
