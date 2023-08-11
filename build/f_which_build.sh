@@ -3,7 +3,7 @@ set -e
 . "${WLB_SCRIPT_FOLDER:-$(dirname "$(readlink -f "$BASH_SOURCE")")}/helpers.sh"
 
 BLD_CONFIG_BUILD_NAME="which";
-BLD_CONFIG_CONFIG_CMD_ADDL="--enable-maintainer-mode" #--disable-nls --enable-static
+BLD_CONFIG_CONFIG_CMD_ADDL="--enable-maintainer-mode"
 BLD_CONFIG_BUILD_MSVC_RUNTIME_INFO_ADD_TO_C_AND_LDFLAGS=1
 #BLD_CONFIG_BUILD_DEBUG=1
 BLD_CONFIG_GNU_LIBS_USED=0
