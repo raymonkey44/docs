@@ -122,7 +122,7 @@ jobs:
     #     path: |
     #       d:/artifacts
     #     key: ${{ inputs.BuildPkg }}
-    - name: Debug Session
-      if: ${{ failure() }}
-      run: D:/a/docs/docs/.github/debug_ssh_start.ps1
-      #run: pwd && dir
+    # - name: Debug Session
+    #   if: ${{ failure() }}
+    #   run: D:/a/docs/docs/.github/debug_ssh_start.ps1
+    #   #run: pwd && dir

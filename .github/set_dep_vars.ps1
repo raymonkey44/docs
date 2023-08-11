@@ -8,4 +8,4 @@ echo it is $env:DEPS
 
 
 $arr=($env:DEPS).split()
-$arr | foreach {WriteHost 'ITS: ' + $_}
+$arr | foreach {Write-Host 'ITS: ' + $_}
