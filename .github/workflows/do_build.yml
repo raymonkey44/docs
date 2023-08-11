@@ -99,7 +99,6 @@ jobs:
           path: |
             d:/artifacts
           key: ${{ inputs.BuildPkg }}
-          lookup-only: true
 
 
       - name: MSBuild Setup

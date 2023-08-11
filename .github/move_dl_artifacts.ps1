@@ -9,6 +9,7 @@ foreach ($file in $files){
 	$srcPath = "d:/artifacts/$($folder)"
 	if ( -not (Test-Path -Path $srcPath)  ){
 		Expand-Archive -Path $file.FullName -DestinationPath $srcPath
+		Write-Host "Extracting $folder"
 	}
 }
 
