@@ -19,7 +19,9 @@ jobs:
     name:  DEP Download
     runs-on: windows-2022
     environment: main
-
+    defaults:
+      run:
+        shell: pwsh
     steps:
     - name: Check Existing Cache
       id: cachecheck
@@ -115,4 +117,4 @@ jobs:
     #     key: ${{ inputs.BuildPkg }}
     - name: Debug Session
       if: ${{ failure() }}
-      run: ${{env.WLB_SCRIPT_FOLDER}}/.github/debug_ssh_start.ps1
+      run: ${{ github.workspace }}/.github/debug_ssh_start.ps1
