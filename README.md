@@ -1,7 +1,8 @@
-[![Tool Builds](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml) | [![GNULIB Patch Tests](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml)
+[![GNULIB Patch Tests](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml)
 
 <!-- MarkdownTOC -->
 
+- [Current Tools](#current-tools)
 - [What is it?](#what-is-it)
 - [Warnings](#warnings)
 - [Why](#why)
@@ -21,31 +22,34 @@
 <!-- /MarkdownTOC -->
 
 # Current Tools
-- [tar](repo_notes/tar_README.md) - [![tar Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml)
-- [grep](repo_notes/grep_README.md) - [![grep Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_grep_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_grep_build.yml)
-- [gzip](repo_notes/gzip_README.md) - [![gzip Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gzip_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gzip_build.yml)
-- [pcre2](repo_notes/pcre2_README.md) - [![pcre2 Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pcre2_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pcre2_build.yml)
-- [zstd](repo_notes/zstd_README.md) - [![zstd Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml)
-- [coreutils](repo_notes/coreutils_README.md) - [![coreutils Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_coreutils_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_coreutils_build.yml)
-- [findutils](repo_notes/findutils_README.md) - [![findutils Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_findutils_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_findutils_build.yml)
-- [diffutils](repo_notes/diffutils_README.md) - [![diffutils Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_diffutils_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_diffutils_build.yml)
-- [which](repo_notes/which_README.md) - [![which Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_which_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_which_build.yml)
-- [sed](repo_notes/sed_README.md) - [![sed Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_sed_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_sed_build.yml)
-- [openssl](repo_notes/openssl_README.md) - [![openssl Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_openssl_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_openssl_build.yml)
-- [wget](repo_notes/wget_README.md) - [![wget Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget_build.yml)
-- [highlight](repo_notes/highlight_README.md) - [![highlight Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_highlight_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_highlight_build.yml)
-- [patch](repo_notes/patch_README.md) - [![patch Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_patch_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_patch_build.yml)
-- [make](repo_notes/make_README.md) - [![make Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_make_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_make_build.yml)
-- [automake](repo_notes/automake_README.md) - [![automake Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_automake_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_automake_build.yml)
-- [symlinks](repo_notes/symlinks_README.md) - [![symlinks Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_symlinks_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_symlinks_build.yml)
-- [wget2](repo_notes/wget2_README.md) - [![wget2 Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget2_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget2_build.yml)
-- [pdcurses](repo_notes/pdcurses.md) - [![pdcurses Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pdcurses_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pdcurses_build.yml)
-- [libhsts](repo_notes/hsts_README.md) - [![libhsts Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_libhsts_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_libhsts_build.yml)
-- [wolfCrypt](repo_notes/wolfcrypt_README.md) - [![wolfCrypt Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wolfCrypt_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wolfCrypt_build.yml)
-- [awk](repo_notes/awk_README.md) - [![awk Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_awk_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_awk_build.yml)
-- [gawk](repo_notes/gawk_README.md) - [![gawk Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gawk_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gawk_build.yml)
-- [zlib](repo_notes/zlib_README.md) - [![zlib Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml)
-WIP: - [bash](repo_notes/bash_README.md) - [![bash Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml)
+| Our Changes  | CI Action Status |
+| ------------ | ---------------- |
+
+|  [automake](repo_notes/automake_README.md)  |  [![automake Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_automake_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_automake_build.yml)  |
+|  [awk](repo_notes/awk_README.md)  |  [![awk Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_awk_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_awk_build.yml)  |
+|  [coreutils](repo_notes/coreutils_README.md)  |  [![coreutils Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_coreutils_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_coreutils_build.yml)  |
+|  [diffutils](repo_notes/diffutils_README.md)  |  [![diffutils Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_diffutils_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_diffutils_build.yml)  |
+|  [findutils](repo_notes/findutils_README.md)  |  [![findutils Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_findutils_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_findutils_build.yml)  |
+|  [gawk](repo_notes/gawk_README.md)  |  [![gawk Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gawk_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gawk_build.yml)  |
+|  [grep](repo_notes/grep_README.md)  |  [![grep Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_grep_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_grep_build.yml)  |
+|  [gzip](repo_notes/gzip_README.md)  |  [![gzip Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gzip_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_gzip_build.yml)  |
+|  [highlight](repo_notes/highlight_README.md)  |  [![highlight Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_highlight_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_highlight_build.yml)  |
+|  [libhsts](repo_notes/hsts_README.md)  |  [![libhsts Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_libhsts_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_libhsts_build.yml)  |
+|  [make](repo_notes/make_README.md)  |  [![make Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_make_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_make_build.yml)  |
+|  [openssl](repo_notes/openssl_README.md)  |  [![openssl Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_openssl_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_openssl_build.yml)  |
+|  [patch](repo_notes/patch_README.md)  |  [![patch Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_patch_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_patch_build.yml)  |
+|  [pcre2](repo_notes/pcre2_README.md)  |  [![pcre2 Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pcre2_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pcre2_build.yml)  |
+|  [pdcurses](repo_notes/pdcurses.md)  |  [![pdcurses Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pdcurses_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_pdcurses_build.yml)  |
+|  [sed](repo_notes/sed_README.md)  |  [![sed Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_sed_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_sed_build.yml)  |
+|  [symlinks](repo_notes/symlinks_README.md)  |  [![symlinks Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_symlinks_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_symlinks_build.yml)  |
+|  [tar](repo_notes/tar_README.md)  |  [![tar Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_tar_build.yml)  |
+|  [wget2](repo_notes/wget2_README.md)  |  [![wget2 Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget2_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget2_build.yml)  |
+|  [wget](repo_notes/wget_README.md)  |  [![wget Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wget_build.yml)  |
+|  [which](repo_notes/which_README.md)  |  [![which Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_which_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_which_build.yml)  |
+|  [wolfCrypt](repo_notes/wolfcrypt_README.md)  |  [![wolfCrypt Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wolfcrypt_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_wolfcrypt_build.yml)  |
+|  [zlib](repo_notes/zlib_README.md)  |  [![zlib Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zlib_build.yml)  |
+|  [zstd](repo_notes/zstd_README.md)  |  [![zstd Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_zstd_build.yml)  |
+|  WIP: [bash](repo_notes/bash_README.md)  |  [![bash Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_bash_build.yml)  |
 
 # What is it?
 
@@ -59,7 +63,7 @@ It is a few primary components:
 - Minimal changes to each target to make it work, to reduce maintenance requirements as the code changes.  For some of these projects we throw additional gnulib modules at it that seem to fix the problems, there may be easier ways but this does result in minimal changes to the native code base.
 - Build entire projects in Windows native debug mode for full VS debugging and symbols
 - Logging of build process to create a batch file (.bat) to be able to build most projects without any subsystem at all
-- Github actions produces **Windows binaries** for download.  You can find these under the [![Tool Builds](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_builds.yml) workflows, click on a successful one and then the downloads can be found under Artifacts on that page.  Note: you must be signed into github to see the artifacts produced.
+- Github actions produces **Windows binaries** for download.  You can find these under the workflow links in the list above, click on a successful one and then the downloads can be found under Artifacts on that page.  Note: you must be signed into github to see the artifacts produced.
 
 # Warnings
 
