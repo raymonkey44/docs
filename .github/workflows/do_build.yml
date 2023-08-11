@@ -80,19 +80,26 @@ jobs:
 
 
 
+#previously we built all in one workflow now with them as individual workflows we download differently
 
-
-      - name: Download Required Artifacts
-        uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
-        if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
-        with:
-          name: ${{ inputs.RequiredDeps }}
-          path: d:/artifacts
-          name_prefix: WLB-
-          run_id: ${{ github.run_id }}
-          workflow_conclusion: "success"
+      # - name: Download Required Artifacts
+      #   uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
+      #   if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
+      #   with:
+      #     name: ${{ inputs.RequiredDeps }}
+      #     path: d:/artifacts
+      #     name_prefix: WLB-
+      #     run_id: ${{ github.run_id }}
+      #     workflow_conclusion: "success"
           
-
+      - name: Restore Existing Dep Cache
+        if: ${{ inputs.RequiredDeps != '' && inputs.BuildPkg != 'script' }}
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            d:/artifacts
+          key: ${{ inputs.BuildPkg }}
+          lookup-only: true
 
 
       - name: MSBuild Setup

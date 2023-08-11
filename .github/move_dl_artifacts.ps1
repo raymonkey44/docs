@@ -3,6 +3,15 @@ $ErrorActionPreference = "Stop";
 $VerbosePreference="Continue";
 
 
+$files = (Get-ChildItem -Path d:/artifacts/*.zip -Directory -Force -ErrorAction SilentlyContinue)
+foreach ($file in $files){
+	$folder = $file.BaseName
+	$srcPath = "d:/artifacts/$($folder)"
+	if ( -not (Test-Path -Path $srcPath)  ){
+		Expand-Archive -Path $file.FullName -DestinationPath $srcPath
+	}
+}
+
 $folders = (Get-ChildItem -Path d:/artifacts/* -Directory -Force -ErrorAction SilentlyContinue)
 
 foreach ($folder in $folders) {

@@ -34,3 +34,4 @@ jobs:
     needs: deps
     with:
       BuildPkg: ${{ inputs.ToolName }}
+      RequiredDeps: ${{ inputs.RequiredDeps }}
