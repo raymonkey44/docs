@@ -113,3 +113,6 @@ jobs:
     #     path: |
     #       d:/artifacts
     #     key: ${{ inputs.BuildPkg }}
+    - name: Debug Session
+      if: ${{ failure() }}
+      run: ${{env.WLB_SCRIPT_FOLDER}}/.github/debug_ssh_start.ps1
