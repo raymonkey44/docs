@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    uses: ./.github/tool_build.yml
+    uses: ./.github/tool_build.yml@main
     with:
       ToolName: wget2
       RequiredDeps: |

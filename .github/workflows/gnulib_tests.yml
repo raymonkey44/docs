@@ -18,13 +18,13 @@ env:
 
 jobs:
   get_patch_matrix:
-    uses: ./.github/workflows/do_build.yml
+    uses: ./.github/do_build.yml
     with:
       BuildPkg: script
       Script: ./build/f_TEMPLATE_build.sh gnulib_dump_patches
   gnulib_test_all_patches:
     name: Test All Patches Together
-    uses: ./.github/workflows/do_build.yml
+    uses: ./.github/do_build.yml
     with:
       BuildPkg: script
       Script: .github/gnu_patchtest.sh all_patch
@@ -37,7 +37,7 @@ jobs:
       matrix:
         PatchName: ${{ fromjson(needs.get_patch_matrix.outputs.ScriptRes) }}
         Mode: [branch, patch]
-    uses: ./.github/workflows/do_build.yml
+    uses: ./.github/do_build.yml
     with:
       BuildPkg: script
       Script: .github/gnu_patchtest.sh ${{ matrix.Mode }} '${{ matrix.PatchName }}'
