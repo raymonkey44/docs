@@ -33,7 +33,7 @@ jobs:
       id: vars
       env:
         DEPS: "${{ inputs.RequiredDeps }}"
-      run: ${{env.WLB_SCRIPT_FOLDER}}/.github/set_dep_vars.ps1
+      run: ./.github/set_dep_vars.ps1
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep1Name }}
       uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
