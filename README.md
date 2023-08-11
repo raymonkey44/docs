@@ -1,4 +1,4 @@
-[![GNULIB Patch Tests](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml)
+
 
 <!-- MarkdownTOC -->
 
@@ -24,6 +24,7 @@
 # Current Tools
 | Our Changes  | CI Action Status |
 | ------------ | ---------------- |
+| [gnulib](repo_notes/gnulib_README.md)       | [![GNULIB Patch Tests](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/gnulib_tests.yml) |
 |  [automake](repo_notes/automake_README.md)  |  [![automake Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_automake_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_automake_build.yml)  |
 |  [awk](repo_notes/awk_README.md)  |  [![awk Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_awk_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_awk_build.yml)  |
 |  [coreutils](repo_notes/coreutils_README.md)  |  [![coreutils Build](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_coreutils_build.yml/badge.svg)](https://github.com/mitchcapper/WIN64LinuxBuild/actions/workflows/tool_coreutils_build.yml)  |
