@@ -33,7 +33,7 @@ jobs:
       id: vars
       env:
         DEPS: "${{ inputs.RequiredDeps }}"
-      run: ./.github/set_dep_vars.ps1
+      run: ${{ github.workspace }}/.github/set_dep_vars.ps1
 
     - name: Download Artifact ${{ steps.vars.outputs.Dep1Name }}
       uses: mitchcapper/action-download-artifact@c026c9be4097d153332e6cd0974d140ba22cd6cc
@@ -105,10 +105,10 @@ jobs:
         workflow_conclusion: "success"
         workflow: tool_${{ steps.vars.outputs.Dep7Name }}_build
 
-    - name: Save Cache
-      if: steps.cachecheck.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v3
-      with:
-        path: |
-          d:/artifacts
-        key: ${{ inputs.BuildPkg }}
+    # - name: Save Cache
+    #   if: steps.cachecheck.outputs.cache-hit != 'true'
+    #   uses: actions/cache/save@v3
+    #   with:
+    #     path: |
+    #       d:/artifacts
+    #     key: ${{ inputs.BuildPkg }}
