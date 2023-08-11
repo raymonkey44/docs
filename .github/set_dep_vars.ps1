@@ -4,4 +4,8 @@ $VerbosePreference="Continue";
 #$input | foreach {
 	#write-host "INPUT LINE $_"
 #}
-Get-ChildItem env:
+echo it is $env:DEPS
+
+
+$arr=($env:DEPS).split()
+$arr | foreach {WriteHost 'ITS: ' + $_}
