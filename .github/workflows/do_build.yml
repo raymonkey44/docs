@@ -1,4 +1,4 @@
-name: do_build
+name: __incl_primary_build_script
 on:
   workflow_call:
     inputs:
