@@ -8,4 +8,10 @@ echo it is $env:DEPS
 
 
 $arr=($env:DEPS).split()
-$arr | foreach {Write-Host 'ITS: ' + $_}
+$cnt=1
+foreach ($dep in $arr) {
+	if ($dep){
+
+		echo "Dep$($cnt++)Name=$dep" >> $env:GITHUB_OUTPUT
+	}
+}
