@@ -14,6 +14,7 @@ case "$SKIP_STEP" in
 	log_raw_build|log)
 		LOG_MAKE_RUN="raw"
 		SKIP_STEP=""
+		LOG_MAKE_CONTINUE=1
 		;;
 	log_raw_build_full|log_full)
 		LOG_MAKE_RUN="raw"
