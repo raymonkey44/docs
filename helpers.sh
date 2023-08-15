@@ -539,8 +539,8 @@ function finalcommon(){
 	if [[ "${LOG_MAKE_RUN}" -eq "raw" && -e "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" ]]; then
 		BUILD_OUT="$BLD_CONFIG_INSTALL_FOLDER/build"
 		mkdir -p "$BUILD_OUT"
-		cp -t "$BUILD_OUT" "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" "${BLD_CONFIG_LOG_CONFIG_ENV_FILE}" &>/dev/null || true
-		CFG_PATHS=("config.h" "lib/config.h" "gnulib/config.h" "gl/config.h" "include/config.h")
+		cp -t "$BUILD_OUT" "${BLD_CONFIG_LOG_RAW_BUILD_FILE}" "${BLD_CONFIG_LOG_FILE}"  &>/dev/null || true
+		CFG_PATHS=("config.h" "lib/config.h" "gnulib/config.h" "gl/config.h" "include/config.h" "${BLD_CONFIG_LOG_CONFIG_ENV_FILE}" "config.cache" "config.log" "${BLD_CONFIG_LOG_CONFIGURE_FILE}")
 		for path in "${CFG_PATHS[@]}"; do
 			if [[ -e "$path" ]]; then
 				cp "$path" "$BUILD_OUT"

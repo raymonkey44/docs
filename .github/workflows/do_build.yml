@@ -150,7 +150,7 @@ jobs:
         if: ${{ inputs.BuildPkg == 'script' }}
         shell: powershell
         working-directory: ${{env.WLB_BASE_FOLDER}}
-        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}" log_full
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}" log_raw_build #raw build gets us a .bat file for compiling, without msys but runs make -j 1 so is much slower than without
 
       - name: Debug Session
         if: ${{ failure() && (vars.DEBUG_FAIL == '1') }}
