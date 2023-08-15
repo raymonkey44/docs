@@ -27,22 +27,97 @@ case "$SKIP_STEP" in
 		SKIP_STEP="$2"
 		;;
 esac
+function git_stash_number_from_name(){
+	local stash_name_startswith=$1
+	if [[ -z "$stash_name_startswith" ]]; then
+		echo "git_stash_number_from_name: name arg is empty " 1>&2;
+		exit 1
+	fi
+	# cant look for }: to better anchor as sometimes line is like stash@{0}: On master: WLB_TMP_STASH so have to just do :
+	STASH_ID=`git stash list | grep --color=never -P "(?<=:\s)${stash_name_startswith}" | grep --color=never -o -P "(?<={)[0-9]+(?=})"`
+	if [[ -z "$STASH_ID" ]]; then
+		echo "Unable to find stash with a name starting with regex ${stash_name_startswith}" 1>&2;
+		exit 1
+	fi
+	echo $STASH_ID
+}
+function fully_qualify_stash_id(){
+	local stash_name_startswith_or_number=$1
+	if [[ $stash_name_startswith_or_number =~ ^[0-9]+$ ]]; then
+		STASH_ID="$stash_name_startswith_or_number"
+	else
+		STASH_ID=$(git_stash_number_from_name "${stash_name_startswith_or_number}")
+	fi
+	stash="stash@{${STASH_ID}}"
+	echo "$stash"
+}
+function git_stash_rename(){
+	local stash_name_startswith_or_number=$1
+	local stash_new_name=$2
+	if [ -z "$stash_name_startswith_or_number" ] || [ -z "$stash_new_name" ]; then
+		echo "git_stash_rename: Either old name or new name not passed to call" 1>&2;
+		exit 1
+	fi
+	stash=$(fully_qualify_stash_id "${stash_name_startswith_or_number}")
+    rev=$(git rev-parse "${stash}")
+    git stash drop "${stash}" || exit 1
+    git stash store -m "${stash_new_name}" "$rev" || exit 1
+    git stash list
+}
+function git_stash_to_file(){
+	local stash_name_startswith_or_number=$1
+	local output_filename=$2
+	echo "FULLY QUALIFYING: $stash_name_startswith_or_number"
+	stash=$(fully_qualify_stash_id "${stash_name_startswith_or_number}")
+	git stash show --include-untracked -p --color=never "--output=$output_filename" "$stash"
+}
 
 function git_stash_cur_work_discard_staged_work(){
-	git stash --keep-index --include-untracked -m "WLB_TMP_STASH" #save anything they may have changed
+	# first check if we have a previous stash that didnt get un stashed, if so unstash it
+	# Next store any staged changes(should be only items in our patch) to a backup patch file, stash them and then drop them if anyhting was stashed (delete the staged without changing the unstaged)
+
 	STASH_NAME=`git stash list | grep -o "WLB_TMP_STASH" || true`
-	git reset #unstage all our staged old patch items
-	git diff --ignore-submodules --color=never 
+	if [[ "$STASH_NAME" != "" ]]; then #we already have stashed work likely failed 
+		echo -e "${COLOR_ERROR}Warning found existing temporary stash of work going to unstash it first before restashing cur work${COLOR_NONE}" 1>&2
+		#we can't use pop to do by name, but then we can't do the same for drop
+		#git stash apply stash^{/$STASH_NAME}
+		stash_id=$(fully_qualify_stash_id "$STASH_NAME")
+		ex git stash pop $stash_id
+		echo "####################### just popped the existing one back off"
+		git stash list
+	fi
 	APPEND="$(basename -s .git `git config --get remote.origin.url`)_WLBDISCARD.patch"
+	ORIG_STASH_CNT=`git stash list | wc -l`
 	TMPFILE=`mktemp --suffix=$APPEND`
 	TMPFILE=$(convert_to_universal_path "$TMPFILE")
-	git diff --ignore-submodules --color=never --output="$TMPFILE"
-	git checkout .
+	ex git stash --staged -m "WLB_STAGEDDROP" || true
+	CUR_STASH_CNT=`git stash list | wc -l`
+	if [[ "$CUR_STASH_CNT" != "$ORIG_STASH_CNT" ]]; then #if we stashed it
+		git_stash_to_file "WLB_STAGEDDROP" "$TMPFILE"
+		ex git stash drop
+	fi
+
+	ex git stash --include-untracked -m "WLB_TMP_STASH" #save anything they may have changed
+	CUR_STASH_CNT=`git stash list | wc -l`
+	if [[ "$CUR_STASH_CNT" == "$ORIG_STASH_CNT" ]]; then #if we didn't stash anything
+		STASH_NAME=""
+	fi	
+	
+	LOCAL_WORK_TMP_FILE=""
+	if [[ "$STASH_NAME" != "" ]]; then
+		LOCAL_WORK_TMP_FILE=`mktemp --suffix=$APPEND`
+		LOCAL_WORK_TMP_FILE=$(convert_to_universal_path "$LOCAL_WORK_TMP_FILE")
+		git_stash_to_file "WLB_TMP_STASH" "$LOCAL_WORK_TMP_FILE"
+	fi
+	echo "To backup local work saved to '${LOCAL_WORK_TMP_FILE}' and the staged items we don't care about to '${TMPFILE}'"
+	#ex git checkout . # should no longer need all items were stashed
 }
 function git_stash_stage_patches_and_restore_cur_work(){
 	git add -u .
+	git stash list
 	if [[ "$STASH_NAME" != "" ]]; then
-		git stash apply stash^{/$STASH_NAME}
+		stash_id=$(fully_qualify_stash_id "$STASH_NAME")
+		git stash pop $stash_id
 		STASH_NAME=""
 	fi
 }

@@ -29,7 +29,8 @@ function gnulib_switch_to_master_and_patch(){
 	echo ++++++ Running on GNULIB commit `git rev-parse --abbrev-ref HEAD` `git rev-parse HEAD`
 	rm -f build-aux/wrapper_helper.sh build-aux/wrapper_helper.sh build-aux/ld-link #temporary as we add files rn that the normal checkout clean doesn't cleanup
 	gnulib_patches;
-#	:
+	git_stash_stage_patches_and_restore_cur_work
+	
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -f "Makefile.am" ]]; then
 		SUBDIR_REGEX="^\\s*SUBDIRS\\s*="
@@ -76,8 +77,6 @@ function gnulib_switch_to_master_and_patch(){
 	fi
 		#echo "DBGRAN cat Makefile.am | grep $SUBDIR_REGEX ORIG LINE WAS: $ORIG_LINE NOW: $FINAL_LINE final sed cmd was: " sed -i "s/${SUBDIR_REGEX}.+/$FINAL_LINE/g" Makefile.am
 	#done
-	
-	git_stash_stage_patches_and_restore_cur_work
 }
 function gnulib_ensure_buildaux_scripts_copied(){
 	FORCED=0

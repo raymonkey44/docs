@@ -45,7 +45,7 @@ jobs:
         #BuildPkg: [grep]
 #        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,grep]
         BaseImage: [windows-latest]
-        Configuration: [Debug]
+        Configuration: [Debug, Release]
         Arch: [x64]
         #BaseImage: [windows-latest, ubuntu-latest]
         #Configuration: [Debug, Release]
@@ -63,6 +63,7 @@ jobs:
     env:
       BUILD_PKG: ${{inputs.BuildPkg}}
       SCRIPT: ${{inputs.Script}}
+      Configuration: ${{matrix.Configuration}}
     steps:
       - uses: actions/checkout@v3.1.0
         with:
@@ -73,6 +74,9 @@ jobs:
           $dir=$dir.replace("\","/")
           echo "WLB_SCRIPT_FOLDER=$dir" >> $env:GITHUB_ENV
           mkdir $env:WLB_BASE_FOLDER
+          if ($env:Configuration -eq "Debug"){
+            echo "BLD_CONFIG_BUILD_DEBUG=1" >> $env:GITHUB_ENV
+          }
 
 #      - uses: actions/setup-dotnet@v3.0.3
 #        with:
@@ -146,7 +150,7 @@ jobs:
         if: ${{ inputs.BuildPkg == 'script' }}
         shell: powershell
         working-directory: ${{env.WLB_BASE_FOLDER}}
-        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}"
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}" log_full
 
       - name: Debug Session
         if: ${{ failure() && (vars.DEBUG_FAIL == '1') }}
@@ -155,6 +159,6 @@ jobs:
       - uses: actions/upload-artifact@v3.1.1
         if: ${{ inputs.BuildPkg != 'script' }}
         with:
-          name: WLB-${{env.BUILD_PKG}}
+          name: WLB-${{env.BUILD_PKG}}-${{matrix.Configuration}}
           path: ${{env.WLB_BASE_FOLDER}}/${{env.BUILD_PKG}}/final
           if-no-files-found: error
