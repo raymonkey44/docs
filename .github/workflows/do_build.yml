@@ -45,7 +45,7 @@ jobs:
         #BuildPkg: [grep]
 #        BuildPkg: [which,patch,zstd,pcre2,gzip,tar,zlib,findutils,libpsl,coreutils,grep]
         BaseImage: [windows-latest]
-        Configuration: [Debug, Release]
+        Configuration: [Debug, Release] #right now the deps downloader always downloads release versions, we could use our debug libs for debug builds
         Arch: [x64]
         #BaseImage: [windows-latest, ubuntu-latest]
         #Configuration: [Debug, Release]
@@ -159,6 +159,6 @@ jobs:
       - uses: actions/upload-artifact@v3.1.1
         if: ${{ inputs.BuildPkg != 'script' }}
         with:
-          name: WLB-${{env.BUILD_PKG}}-${{matrix.Configuration}}
+          name: WLB-${{env.BUILD_PKG}}${{matrix.Configuration=='Debug' && '-Debug' || ''}}
           path: ${{env.WLB_BASE_FOLDER}}/${{env.BUILD_PKG}}/final
           if-no-files-found: error
