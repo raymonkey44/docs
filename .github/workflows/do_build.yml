@@ -30,7 +30,7 @@ env:
 
 jobs:
   build:
-    name:  ${{ inputs.BuildPkg == 'script' && 'Run Script' || 'Build Package' }}
+    name:  ${{ inputs.BuildPkg == 'script' && 'Run Script' || 'Build Package' }} - ${{matrix.Configuration}}
     runs-on: windows-2022
     environment: main
     outputs:
@@ -143,14 +143,14 @@ jobs:
         if: ${{ inputs.BuildPkg != 'script' }}
         shell: powershell
         working-directory: ${{env.WLB_BASE_FOLDER}}
-        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/build/f_$($env:BUILD_PKG)_build.sh"
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/build/f_$($env:BUILD_PKG)_build.sh" log_raw_build #raw build gets us a .bat file for compiling, without msys but runs make -j 1 so is much slower than without
 
       - name: Run Script
         id: script_step
         if: ${{ inputs.BuildPkg == 'script' }}
         shell: powershell
         working-directory: ${{env.WLB_BASE_FOLDER}}
-        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}" log_raw_build #raw build gets us a .bat file for compiling, without msys but runs make -j 1 so is much slower than without
+        run: ${{env.WLB_SCRIPT_FOLDER}}/vs_msys_shell_launch.ps1 "${{env.WLB_SCRIPT_FOLDER}}/${{env.SCRIPT}}"
 
       - name: Debug Session
         if: ${{ failure() && (vars.DEBUG_FAIL == '1') }}
