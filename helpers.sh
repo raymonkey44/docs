@@ -99,20 +99,22 @@ function git_stash_cur_work_discard_staged_work(){
 		git_stash_to_file "WLB_STAGEDDROP" "$TMPFILE"
 		ex git stash drop
 	fi
-
-	ex git stash --include-untracked -m "WLB_TMP_STASH" #save anything they may have changed
+	STASH_NAME="WLB_TMP_STASH"
+	ex git stash --include-untracked -m "${STASH_NAME}" #save anything they may have changed
+	
 	CUR_STASH_CNT=`git stash list | wc -l`
 	if [[ "$CUR_STASH_CNT" == "$ORIG_STASH_CNT" ]]; then #if we didn't stash anything
 		STASH_NAME=""
 	fi	
-	
+
 	LOCAL_WORK_TMP_FILE=""
 	if [[ "$STASH_NAME" != "" ]]; then
 		LOCAL_WORK_TMP_FILE=`mktemp --suffix=$APPEND`
 		LOCAL_WORK_TMP_FILE=$(convert_to_universal_path "$LOCAL_WORK_TMP_FILE")
 		git_stash_to_file "WLB_TMP_STASH" "$LOCAL_WORK_TMP_FILE"
+		LOCAL_WORK_TMP_FILE="To backup local work saved to '${LOCAL_WORK_TMP_FILE}' and "
 	fi
-	echo "To backup local work saved to '${LOCAL_WORK_TMP_FILE}' and the staged items we don't care about to '${TMPFILE}'"
+	echo "${LOCAL_WORK_TMP_FILE}The staged items we don't care about to '${TMPFILE}'"
 	#ex git checkout . # should no longer need all items were stashed
 }
 function git_stash_stage_patches_and_restore_cur_work(){
@@ -213,7 +215,54 @@ SetupIgnores(){
 PreInitialize(){
 	ini_read;
 }
-
+function git_clone(){
+	ADD_RECURSE="--recurse-submodules"
+	ADD_BUNDLE=""
+	if [[ "$BLD_CONFIG_BUNDLE_PATH" != "" ]]; then
+		ADD_BUNDLE="--bundle-uri=${BLD_CONFIG_BUNDLE_PATH}"
+	fi
+	local GIT_URL=""
+	local GIT_DIR=""
+	local ARGS_ARR=("$@")
+	local LEN=${#ARGS_ARR[@]}
+	local FINAL_ARR=()
+	
+	for (( INDEX=0; INDEX<$LEN; INDEX++ )); do
+		local VAL="${ARGS_ARR[$INDEX]}"
+		case $VAL in
+			"--no-recurse-submodules")
+				ADD_RECURSE=""
+			;;
+			"--no-bundle-uri")
+				ADD_BUNDLE=""
+			;;
+			[hH][tT][tT][pP]*://*)
+				GIT_URL="$VAL"
+			;;
+			-*)
+				FINAL_ARR+=($VAL)
+			;;
+			?*)
+				if [[ "$GIT_DIR" != "" ]]; then
+					echo "Not able to handle that git clone arg for some reason? Think it ( ${VAL} ) is dir when dir is already set to:  ${GIT_DIR}"
+					exit 1
+				fi
+				GIT_DIR="$VAL"
+			;;
+		esac
+	done
+	if [[ "$ADD_RECURSE" != "" ]]; then
+		FINAL_ARR+=($ADD_RECURSE)
+	fi
+	if [[ "$ADD_BUNDLE" != "" ]]; then
+		FINAL_ARR+=($ADD_BUNDLE)
+	fi
+	FINAL_ARR+=($GIT_URL)
+	if [[ "$ADD_BUNDLE" != "" ]]; then
+		FINAL_ARR+=($GIT_DIR)
+	fi	
+	ex git clone "${FINAL_ARR[@]}"
+}
 function make_install(){
 	
 	$BLD_CONFIG_BUILD_MAKE_BIN install "$@"
@@ -265,6 +314,7 @@ function run_logged_make(){
 		exit 0
 	fi
 }
+
 function configure_run(){
 	setup_build_env;
 	#gl_cv_host_operating_system="MSYS2" ac_cv_host="x86_64-w64-msys2" ac_cv_build="x86_64-w64-msys2"
