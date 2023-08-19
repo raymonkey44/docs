@@ -38,7 +38,6 @@ function git_stash_rename(){
 function git_stash_to_file(){
 	local stash_name_startswith_or_number=$1
 	local output_filename=$2
-	echo "FULLY QUALIFYING: $stash_name_startswith_or_number"
 	stash=$(git_fully_qualify_stash_id "${stash_name_startswith_or_number}")
 	git stash show --include-untracked -p --color=never "--output=$output_filename" "$stash"
 }
@@ -46,7 +45,9 @@ function git_dump_effective_settings(){
 	git config --list --name-only | sort -u | xargs -I{} bash -c "echo -n '{}'= && git config --get '{}'"
 }
 function git_stash_cur_work_discard_staged_work(){
-	git_dump_effective_settings;
+	if [[ "$BLD_CONFIG_GIT_STASH_STAGE_DEBUG" -eq "1" ]]; then
+		git_dump_effective_settings;
+	fi
 	if [[ $BLD_CONFIG_GIT_STASH_STAGE_AROUND_PATCHES -ne "1" ]]; then
 		return
 	fi
@@ -59,7 +60,7 @@ function git_stash_cur_work_discard_staged_work(){
 		#we can't use pop to do by name, but then we can't do the same for drop
 		#git stash apply stash^{/$STASH_NAME}
 		stash_id=$(git_fully_qualify_stash_id "$STASH_NAME")
-		ex git stash pop $stash_id
+		ex git stash pop $stash_id > /dev/null
 		echo "####################### just popped the existing one back off"
 		git stash list
 	fi
@@ -93,7 +94,7 @@ function git_stash_cur_work_discard_staged_work(){
 	#ex git checkout . # should no longer need all items were stashed
 }
 function git_stash_stage_dbg(){
-	if [[ $BLD_CONFIG_GIT_STASH_STAGE_DEBUG -ne "1" ]]; then
+	if [[ "$BLD_CONFIG_GIT_STASH_STAGE_DEBUG" -ne "1" ]]; then
 		return;
 	fi
 	local msg=$1
@@ -113,7 +114,7 @@ function git_stash_stage_patches_and_restore_cur_work(){
 	git_stash_stage_dbg "Going to restore our local changes nothing should be untracked yet only the staged patch changes"
 	if [[ "$STASH_NAME" != "" ]]; then
 		stash_id=$(git_fully_qualify_stash_id "$STASH_NAME")
-		git stash pop $stash_id
+		git stash pop $stash_id > /dev/null
 		STASH_NAME=""
 	fi
 	git_stash_stage_dbg "Done nothing should be stashed and all non local changes should be staged"
@@ -126,13 +127,14 @@ function git_apply_patch () {
 function git_clone(){
 	ADD_RECURSE="--recurse-submodules"
 	ADD_BUNDLE=""
+	local ARGS_ARR=("$@")
+	local LEN=${#ARGS_ARR[@]}
+
 	if [[ "$BLD_CONFIG_BUNDLE_PATH" != "" && -e "$BLD_CONFIG_BUNDLE_PATH" ]]; then
 		ADD_BUNDLE="--bundle-uri=${BLD_CONFIG_BUNDLE_PATH}"
 	fi
 	local GIT_URL=""
 	local GIT_DIR=""
-	local ARGS_ARR=("$@")
-	local LEN=${#ARGS_ARR[@]}
 	local FINAL_ARR=()
 	
 	for (( INDEX=0; INDEX<$LEN; INDEX++ )); do
@@ -166,10 +168,23 @@ function git_clone(){
 		FINAL_ARR+=($ADD_BUNDLE)
 	fi
 	FINAL_ARR+=($GIT_URL)
-	if [[ "$ADD_BUNDLE" != "" ]]; then
+	if [[ "$GIT_DIR" != "" ]]; then
 		FINAL_ARR+=($GIT_DIR)
 	fi	
 	ex git clone "${FINAL_ARR[@]}"
+}
+# will stage the following files if staging around patches is enabled
+function git_staging_add(){
+if [[ "$BLD_CONFIG_GIT_STASH_STAGE_AROUND_PATCHES" -eq 1 ]]; then
+		ex git add "$@"
+	fi
+}
+
+# will commit up staged items if  stage around patches enabled
+function git_staging_commit(){
+	if [[ "$BLD_CONFIG_GIT_STASH_STAGE_AROUND_PATCHES" -eq 1 ]]; then
+		ex git commit -m "FIXME faux required commit of pre-repo build prep"
+	fi
 }
 function git_settings_to_env(){
 	declare -a GIT_SETTINGS=("${BLD_CONFIG_GIT_SETTINGS_DEFAULT[@]}")

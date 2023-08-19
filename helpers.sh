@@ -83,6 +83,51 @@ apply_our_repo_patch () {
 	fi
 }
 
+osfixes_set_locations_dbg_add_to_libs(){
+	osfixes_set_locations "$@"
+	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
+		return;
+	fi
+
+}
+osfixes_bare_compile(){
+	ex cl.exe /c /MTd -DWLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH "$OSFIXES_SRC_DST"
+	OSFIXES_LIB="${OSFIXES_SRC_DST::-1}obj"
+	CONFIG_ADDL_LIBS+="-l$OSFIXES_LIB"
+}
+osfixes_set_locations(){
+	declare -g OSFIXES_HEADER_DST="$BLD_CONFIG_SRC_FOLDER"
+	declare -g OSFIXES_SRC_DST="$BLD_CONFIG_SRC_FOLDER"
+	if [[ "$#" -gt 0 ]]; then
+		OSFIXES_HEADER_DST="$1"
+		if [[ "$#" -gt 1 ]]; then
+			OSFIXES_SRC_DST="$2"
+		fi
+	fi
+	OSFIXES_SRC_DST+="/osfixes.c"
+	OSFIXES_HEADER_DST+="/osfixes.h"
+	declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}obj"
+
+}
+
+osfixes_link_in_if_dbg_and_stg() {
+	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
+		return;
+	fi
+	osfixes_link_in_if_needed;
+	git_staging_add "$OSFIXES_SRC_DST" "$OSFIXES_HEADER_DST"
+}
+# first arg is header folder, second arg is c file folder
+osfixes_link_in_if_needed()  {
+	
+	if [[ ! -e "${OSFIXES_SRC_DST}" ]]; then
+		ln -s "${WLB_SCRIPT_FOLDER}/osfixes.c" "${OSFIXES_SRC_DST}"
+	fi
+	if [[ ! -e "${OSFIXES_HEADER_DST}" ]]; then
+		ln -s "${WLB_SCRIPT_FOLDER}/osfixes.h" "${OSFIXES_HEADER_DST}"
+	fi
+}
+
 convert_to_msys_path () {
 	local WPATH=$1
 	WPATH=`cygpath -u "$WPATH"`
@@ -176,8 +221,8 @@ function configure_run(){
 	ex ./configure "${FULL_CONFIG_CMD_ARR[@]}"  > >(tee "${BLD_CONFIG_LOG_CONFIGURE_FILE}");
 }
 function use_custom_make_and_gsh(){
-	BLD_CONFIG_BUILD_MAKE_BIN="C:/software/btest/make/x64/Debug/gnumake.exe"
-	MAKESHELL="C:/software/btest/gsh/obj/dev/gsh.exe"
+	BLD_CONFIG_BUILD_MAKE_BIN="gnumake.exe"
+	MAKESHELL="gsh.exe"
 	DEFAULTMAKESHELL="$MAKESHELL"
 	NOMAKESHELLS="/bin/sh"
 
