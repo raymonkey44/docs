@@ -88,25 +88,26 @@ osfixes_set_locations_dbg_add_to_libs(){
 	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
 		return;
 	fi
-
+	BLD_CONFIG_CONFIG_ADDL_LIBS+=" -l$OSFIXES_LIB"
 }
 osfixes_bare_compile(){
-	ex cl.exe /c /MTd -DWLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH "$OSFIXES_SRC_DST"
-	OSFIXES_LIB="${OSFIXES_SRC_DST::-1}obj"
-	CONFIG_ADDL_LIBS+="-l$OSFIXES_LIB"
+	cd $OSFIXES_SRC_DST_FLDR
+	ex cl.exe /nologo /c /ZI /MTd -DWLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH "$OSFIXES_SRC_DST"
+	ex lib.exe /nologo "${OSFIXES_SRC_DST::-1}obj"
+	cd $BLD_CONFIG_SRC_FOLDER
 }
 osfixes_set_locations(){
 	declare -g OSFIXES_HEADER_DST="$BLD_CONFIG_SRC_FOLDER"
-	declare -g OSFIXES_SRC_DST="$BLD_CONFIG_SRC_FOLDER"
+	declare -g OSFIXES_SRC_DST_FLDR="$BLD_CONFIG_SRC_FOLDER"
 	if [[ "$#" -gt 0 ]]; then
 		OSFIXES_HEADER_DST="$1"
 		if [[ "$#" -gt 1 ]]; then
-			OSFIXES_SRC_DST="$2"
+			OSFIXES_SRC_DST_FLDR="$2"
 		fi
 	fi
-	OSFIXES_SRC_DST+="/osfixes.c"
+	declare -g OSFIXES_SRC_DST="${OSFIXES_SRC_DST_FLDR}/osfixes.c"
 	OSFIXES_HEADER_DST+="/osfixes.h"
-	declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}obj"
+	declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}lib"
 
 }
 

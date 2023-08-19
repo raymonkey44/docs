@@ -57,7 +57,6 @@ fi
 		autoreconf --symlink --verbose --install
 		SKIP_STEP=""
 	fi
-
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
 		configure_fixes;
