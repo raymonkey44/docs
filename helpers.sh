@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eo pipefail -o functrace
+
 shopt -s inherit_errexit
 #while we could export SHELLOPTS many scripts dont work well with pipefail enabled
 
@@ -9,6 +9,42 @@ declare -g SCRIPT_FOLDER="${WLB_SCRIPT_FOLDER:-$(dirname "$(CALL_SCRIPT_PATH)")}
 declare -g LOG_MAKE_RUN=""
 declare -g LOG_MAKE_CONTINUE=0
 
+
+function usage(){
+	load_colors;
+	declare -A cmds=(
+		[export_config]="Export project config to file for DebugProjGen.csx"
+		[log_raw_build|log]="Normal full run except create a .bat file for the commands run for the build process"
+		[log_make|log_make_full]="Similar to raw build above but runs make's dry run and generates that log, _full"
+		[log_raw_build_full|log_full]="Same as above, but can pass an additional step arg after to start at a certain step"
+		[our_patch]="Apply our patch for this repo"
+		[checkout]="Checkout the original repo"
+		[gnulib]="checkout gnulib and apply our patches to it"
+		[bootstrap]="bootstrap gnulib and related project autoconf files"
+		[configure]="configure run (does use cache opt)"
+		[make]="make, default that happens if not matched to another arg (but an arg is passed)"
+	)
+	comp_str=""
+	OUR_NAME=$(basename "$0")
+	if [[ $SKIP_STEP != "autocomplete" ]]; then
+		echo "$OUR_NAME <skip_to_step_or_cmd> - build script, steps: "
+	fi
+	for key in "${!cmds[@]}"; do
+		if [[ $SKIP_STEP != "autocomplete" ]]; then
+			echo -e "\t${COLOR_MAJOR}${key}${COLOR_NONE} - ${COLOR_MINOR2}${cmds[$key]}${COLOR_NONE}"
+		fi
+		IFS='|' read -ra ALL <<< "$key"
+		for key in "${ALL[@]}"; do 
+			comp_str+="${key} ";
+		done
+	done
+	if [[ $SKIP_STEP == "autocomplete" ]]; then
+		echo "$comp_str"
+		exit 0
+	fi
+
+	exit 1
+}
 #full allows you to run all the steps including it, or resume earlier through it rather than just it
 case "$SKIP_STEP" in
 	log_raw_build|log)
@@ -88,12 +124,12 @@ osfixes_set_locations_dbg_add_to_libs(){
 	if [[ ! $BLD_CONFIG_BUILD_DEBUG ]]; then
 		return;
 	fi
-	BLD_CONFIG_CONFIG_ADDL_LIBS+=" -l$OSFIXES_LIB"
+	LDFLAGS+=" -Xlinker $OSFIXES_LIB"
 }
 osfixes_bare_compile(){
 	cd $OSFIXES_SRC_DST_FLDR
-	ex cl.exe /nologo /c /ZI /MTd -DWLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH "$OSFIXES_SRC_DST"
-	ex lib.exe /nologo "${OSFIXES_SRC_DST::-1}obj"
+	ex cl.exe -D_DEBUG -DDEBUG /nologo /c /ZI /MTd -DWLB_DISABLE_DEBUG_ASSERT_POPUP_AT_LAUNCH "$OSFIXES_SRC_DST"
+	#ex lib.exe /nologo "${OSFIXES_SRC_DST::-1}obj" want to do obj to make sure it is always incldued
 	cd $BLD_CONFIG_SRC_FOLDER
 }
 osfixes_set_locations(){
@@ -107,7 +143,8 @@ osfixes_set_locations(){
 	fi
 	declare -g OSFIXES_SRC_DST="${OSFIXES_SRC_DST_FLDR}/osfixes.c"
 	OSFIXES_HEADER_DST+="/osfixes.h"
-	declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}lib"
+	#declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}lib"
+	declare -g OSFIXES_LIB="${OSFIXES_SRC_DST::-1}obj"
 
 }
 
@@ -413,6 +450,14 @@ function configure_fixes(){
 
 }
 
+function load_colors(){
+	COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
+	COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
+	COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
+	COLOR_ERROR="${COLOR_ERROR:-\e[1;31m}"
+	COLOR_NONE="${COLOR_NONE:-\e[0m}"	
+}
+
 function startcommon(){
 	# need to do these early before everything else
 
@@ -424,11 +469,7 @@ function startcommon(){
 	mkdir -p "$BLD_CONFIG_SRC_FOLDER"
 	cd "$BLD_CONFIG_SRC_FOLDER"
 	if [[ $BLD_CONFIG_LOG_COLOR_HIGHLIGHT ]]; then
-		COLOR_MINOR="${COLOR_MINOR:-\e[2;33m}"
-		COLOR_MINOR2="${COLOR_MINOR2:-\e[2;36m}"
-		COLOR_MAJOR="${COLOR_MAJOR:-\e[1;32m}"
-		COLOR_ERROR="${COLOR_ERROR:-\e[1;31m}"
-		COLOR_NONE="${COLOR_NONE:-\e[0m}"
+		load_colors;
 	else
 		COLOR_MINOR=""
 		COLOR_MINOR2=""
@@ -490,3 +531,6 @@ function finalcommon(){
 . "$SCRIPT_FOLDER/helpers_cmake.sh"
 . "$SCRIPT_FOLDER/helpers_bashtrace.sh"
 PreInitialize;
+if [[ $SKIP_STEP == "-h" || $SKIP_STEP == "--help" || $SKIP_STEP == "help"  || $SKIP_STEP == "autocomplete" ]]; then
+	usage;
+fi;

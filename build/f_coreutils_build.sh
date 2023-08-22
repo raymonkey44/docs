@@ -33,6 +33,7 @@ fi
 		
 		SKIP_STEP=""
 	fi
+	#osfixes_bare_compile;exit 1;
 	
 	if [[ $BLD_CONFIG_GNU_LIBS_USED -eq "1" ]]; then
 		if [[ -z $SKIP_STEP || $SKIP_STEP == "gnulib" ]]; then

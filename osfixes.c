@@ -1,5 +1,7 @@
 #include "osfixes.h"
 #define WIN32_LEAN_AND_MEAN
+#define _GL_CTYPE_H
+#define _GL_CONFIG_H_INCLUDED 1
 #include <windows.h>
 #ifdef WLB_INCL_WLB_DEBUG_H
 #include "wlb_debug.h"
@@ -8,7 +10,7 @@
 // #include "term.h"
 // #include "general.h"
 
-#include <stdio.h>
+#include <../ucrt/stdio.h>
 #ifndef TRUE
 #define FALSE 0
 #define TRUE 1

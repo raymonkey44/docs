@@ -37,8 +37,8 @@ fi
 		popd
 		echo "EXTRA_DIST = " > m4/Makefile.am
 		add_items_to_gitignore;
-		git add bootstrap bootstrap.conf
-		git commit -m "tmp_commit_of_bootstrap" #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed		
+		git_staging_add bootstrap bootstrap.conf
+		git_staging_commit #need to commit it up so that the bootstrap files are avail for our gnulib patching by default all local changes are stashed		
 		SKIP_STEP=""
 	fi
 	if [[ $BLD_CONFIG_BUILD_DEBUG -eq 1 ]]; then
