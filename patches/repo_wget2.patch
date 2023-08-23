@@ -42,127 +42,6 @@ index 838f28b5..760539fb 100644
 - $(LIB_SELECT) $(LIB_SETLOCALE) $(LIB_SETLOCALE_NULL) $(LTLIBICONV) $(LTLIBINTL) $(SERVENT_LIB) @INTL_MACOSX_LIBS@ \
 + $(LIB_SELECT) $(LIB_SETLOCALE) $(LIB_SETLOCALE_NULL) $(LTLIBICONV) $(LTLIBINTL) $(SERVENT_LIB) @INTL_MACOSX_LIBS@ $(LD_ADD_ADDL) \
   $(LIBS)
-diff --git a/include/wget/wget.h b/include/wget/wget.h
-index 708bca49..d2e92b84 100644
---- a/include/wget/wget.h
-+++ b/include/wget/wget.h
-@@ -2666,6 +2666,8 @@ WGETAPI void
- WGETAPI void
- 	wget_intercept_action_set_local_filename(wget_intercept_action *action, const char *local_filename) WGET_GCC_NONNULL((1));
- 
-+WGETAPI const char* wget_ssl_default_cert_dir();
-+WGETAPI const char* wget_ssl_default_ca_bundle_path();
- /**
-  * \ingroup libwget-plugin
-  *
-diff --git a/libwget/dns.c b/libwget/dns.c
-index 7d5b37e0..b62596a1 100644
---- a/libwget/dns.c
-+++ b/libwget/dns.c
-@@ -69,19 +69,20 @@ static wget_dns default_dns = {
- static bool
- 	initialized;
- 
--static void __attribute__((constructor)) dns_init(void)
-+static void dns_exit(void)
- {
--	if (!initialized) {
--		wget_thread_mutex_init(&default_dns.mutex);
--		initialized = true;
-+	if (initialized) {
-+		wget_thread_mutex_destroy(&default_dns.mutex);
-+		initialized = false;
- 	}
- }
- 
--static void __attribute__((destructor)) dns_exit(void)
-+INITIALIZER (dns_init)
- {
--	if (initialized) {
--		wget_thread_mutex_destroy(&default_dns.mutex);
--		initialized = false;
-+	if (!initialized) {
-+		wget_thread_mutex_init(&default_dns.mutex);
-+		initialized = true;
-+		atexit(dns_exit);
- 	}
- }
- 
-diff --git a/libwget/http.c b/libwget/http.c
-index 2fae5d5d..017d320d 100644
---- a/libwget/http.c
-+++ b/libwget/http.c
-@@ -64,24 +64,25 @@ static wget_thread_mutex
- 	hosts_mutex;
- static bool
- 	initialized;
-+static void http_exit(void)
-+{
-+	if (initialized) {
-+		wget_thread_mutex_destroy(&proxy_mutex);
-+		wget_thread_mutex_destroy(&hosts_mutex);
-+		initialized = 0;
-+	}
-+}
- 
--static void __attribute__ ((constructor)) http_init(void)
-+INITIALIZER (http_init)
- {
- 	if (!initialized) {
- 		wget_thread_mutex_init(&proxy_mutex);
- 		wget_thread_mutex_init(&hosts_mutex);
- 		initialized = 1;
-+		atexit(http_exit);
- 	}
- }
- 
--static void __attribute__ ((destructor)) http_exit(void)
--{
--	if (initialized) {
--		wget_thread_mutex_destroy(&proxy_mutex);
--		wget_thread_mutex_destroy(&hosts_mutex);
--		initialized = 0;
--	}
--}
- 
- /**
-  * HTTP API initialization, allocating/preparing the internal resources.
-diff --git a/libwget/init.c b/libwget/init.c
-index b9a67d9d..6ba56432 100644
---- a/libwget/init.c
-+++ b/libwget/init.c
-@@ -49,22 +49,21 @@ static wget_dns_cache *dns_cache;
- static int global_initialized;
- static wget_thread_mutex _mutex;
- static bool initialized;
--
--static void __attribute__ ((constructor)) global_init(void)
--{
--	if (!initialized) {
--		wget_thread_mutex_init(&_mutex);
--		initialized = 1;
--	}
--}
--
--static void __attribute__ ((destructor)) global_exit(void)
-+static void  global_exit(void)
- {
- 	if (initialized) {
- 		wget_thread_mutex_destroy(&_mutex);
- 		initialized = 0;
- 	}
- }
-+INITIALIZER(global_init)
-+{
-+	if (!initialized) {
-+		wget_thread_mutex_init(&_mutex);
-+		initialized = 1;
-+		atexit(global_exit);
-+	}
-+}
- 
- /**
-  * Global library initialization, allocating/preparing all resources.
 diff --git a/libwget/io.c b/libwget/io.c
 index 8973b428..8fbda567 100644
 --- a/libwget/io.c
@@ -178,200 +57,11 @@ index 8973b428..8fbda567 100644
  
  	pollfd.fd = fd;
  
-diff --git a/libwget/private.h b/libwget/private.h
-index 68ce1d45..8f14c823 100644
---- a/libwget/private.h
-+++ b/libwget/private.h
-@@ -69,4 +69,33 @@
- #define debug_write wget_debug_write
- 
- 
-+
-+#ifdef __cplusplus
-+    #define INITIALIZER(f) \
-+        static void f(void); \
-+        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
-+        static void f(void)
-+#elif defined(_MSC_VER)
-+#define ___old_read read
-+#undef read
-+#pragma section(".CRT$XCU",read)
-+#define read ___old_read
-+    #define INITIALIZER2_(f,p) \
-+        static void f(void); \
-+        __declspec(allocate(".CRT$XCU")) void (*f##__constructor__)(void) = f; \
-+        __pragma(comment(linker,"/include:" p #f "__constructor__")) \
-+        static void f(void)
-+    #ifdef _WIN64
-+        #define INITIALIZER(f) INITIALIZER2_(f,"")
-+    #else
-+        #define INITIALIZER(f) INITIALIZER2_(f,"_")
-+    #endif
-+#pragma data_seg()
-+#else
-+    #define INITIALIZER(f) \
-+        static void f(void) __attribute__((constructor)); \
-+        static void f(void)
-+#endif
-+
-+
- #endif /* LIBWGET_PRIVATE_H */
-diff --git a/libwget/random.c b/libwget/random.c
-index 31eaa65b..6702d43e 100644
---- a/libwget/random.c
-+++ b/libwget/random.c
-@@ -52,20 +52,20 @@ static char statebuf[64];
- static struct random_data state;
- static wget_thread_mutex mutex;
- static bool initialized;
--
--static void __attribute__ ((constructor)) random_init(void)
-+static void  random_exit(void)
- {
--	if (!initialized) {
--		wget_thread_mutex_init(&mutex);
--		initialized = 1;
-+	if (initialized) {
-+		wget_thread_mutex_destroy(&mutex);
-+		initialized = 0;
- 	}
- }
- 
--static void __attribute__ ((destructor)) random_exit(void)
-+INITIALIZER(random_init)
- {
--	if (initialized) {
--		wget_thread_mutex_destroy(&mutex);
--		initialized = 0;
-+	if (!initialized) {
-+		wget_thread_mutex_init(&mutex);
-+		initialized = 1;
-+		atexit(random_exit);
- 	}
- }
- 
-diff --git a/libwget/ssl_gnutls.c b/libwget/ssl_gnutls.c
-index 9dc053bd..f19e7c15 100644
---- a/libwget/ssl_gnutls.c
-+++ b/libwget/ssl_gnutls.c
-@@ -124,6 +124,7 @@ static struct config {
- 	.key_type = WGET_SSL_X509_FMT_PEM,
- 	.secure_protocol = "AUTO",
- 	.ca_directory = "system",
-+	.ca_file = "system",
- #ifdef WITH_LIBNGHTTP2
- 	.alpn = "h2,http/1.1",
- #endif
-@@ -1291,6 +1292,8 @@ static void set_credentials(gnutls_certificate_credentials_t creds)
- 			error_printf(_("No certificates or keys were found\n"));
- 	}
- 
-+	if (config.ca_file && !wget_strcmp(config.ca_file, "system"))
-+		config.ca_file = wget_ssl_default_ca_bundle_path();
- 	if (config.ca_file) {
- 		if (gnutls_certificate_set_x509_trust_file(creds, config.ca_file, key_type(config.ca_type)) <= 0)
- 			error_printf(_("No CAs were found in '%s'\n"), config.ca_file);
-@@ -1348,7 +1351,7 @@ void wget_ssl_init(void)
- 				ncerts = 0;
- 
- 				if (!strcmp(config.ca_directory, "system"))
--					config.ca_directory = "/etc/ssl/certs";
-+					config.ca_directory = wget_ssl_default_cert_dir();
- 
- 				if ((dir = opendir(config.ca_directory))) {
- 					struct dirent *dp;
-diff --git a/libwget/ssl_openssl.c b/libwget/ssl_openssl.c
-index 53293609..dd6de0c1 100644
---- a/libwget/ssl_openssl.c
-+++ b/libwget/ssl_openssl.c
-@@ -110,6 +110,7 @@ static struct config
- 	.key_type = WGET_SSL_X509_FMT_PEM,
- 	.secure_protocol = "AUTO",
- 	.ca_directory = "system",
-+	.ca_file = "system",
- #ifdef WITH_LIBNGHTTP2
- 	.alpn = "h2,http/1.1"
- #endif
-@@ -124,9 +125,16 @@ static int ssl_userdata_idx;
- /*
-  * Constructor & destructor
-  */
--static void __attribute__ ((constructor)) tls_init(void)
-+static void tls_exit(void)
- {
--	if (!mutex)
-+	if (mutex){
-+	CRYPTO_free_ex_index(CRYPTO_EX_INDEX_APP, ssl_userdata_idx);
-+		wget_thread_mutex_destroy(&mutex);
-+	}
-+}
-+INITIALIZER(tls_init)
-+{
-+	if (!mutex){
- 		wget_thread_mutex_init(&mutex);
- 
- 	ssl_userdata_idx = CRYPTO_get_ex_new_index(
-@@ -136,14 +144,10 @@ static void __attribute__ ((constructor)) tls_init(void)
- 		NULL,     /* dup_func */
- 		NULL      /* free_func */
- 	);
-+	atexit(tls_exit);
-+	}
- }
- 
--static void __attribute__ ((destructor)) tls_exit(void)
--{
--	CRYPTO_free_ex_index(CRYPTO_EX_INDEX_APP, ssl_userdata_idx);
--	if (mutex)
--		wget_thread_mutex_destroy(&mutex);
--}
- 
- /*
-  * SSL/TLS configuration functions
-@@ -469,7 +473,7 @@ static int openssl_load_trust_files(SSL_CTX *ctx, const char *dir)
- 			goto end;
- 		}
- 
--		dir = "/etc/ssl/certs";
-+		dir = wget_ssl_default_cert_dir();
- 		info_printf(_("OpenSSL: Could not load certificates from default paths. Falling back to '%s'."), dir);
- 	}
- 
-@@ -1281,6 +1285,8 @@ static int openssl_init(SSL_CTX *ctx)
- 		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
- 	}
- 
-+	if (config.ca_file && !wget_strcmp(config.ca_file, "system"))
-+		config.ca_file = wget_ssl_default_ca_bundle_path();
- 	/* Load individual CA file, if requested */
- 	if (config.ca_file && *config.ca_file
- 		&& !SSL_CTX_load_verify_locations(ctx, config.ca_file, NULL))
 diff --git a/libwget/ssl_wolfssl.c b/libwget/ssl_wolfssl.c
-index 7e6c8b22..3ae6c847 100644
+index cd7743be..87874480 100644
 --- a/libwget/ssl_wolfssl.c
 +++ b/libwget/ssl_wolfssl.c
-@@ -45,7 +45,12 @@
- #  define SOCKET_TO_FD(x) (x)
- #endif
- 
-+#ifndef DEBUG_WOLFSSL
- #include <wolfssl/options.h>
-+#undef DEBUG_WOLFSSL
-+#else
-+#include <wolfssl/options.h>
-+#endif
- #include <wolfssl/ssl.h>
- 
- #include <wget.h>
-@@ -110,6 +115,7 @@ static struct config {
- 	.key_type = WGET_SSL_X509_FMT_PEM,
- 	.secure_protocol = "AUTO",
- 	.ca_directory = "system",
-+	.ca_file = "system",
- #ifdef WITH_LIBNGHTTP2
- 	.alpn = "h2,http/1.1",
- #endif
-@@ -129,6 +135,12 @@ struct session_context {
+@@ -135,6 +135,12 @@ struct session_context {
  static WOLFSSL_CTX
  	*ssl_ctx;
  
@@ -384,61 +74,7 @@ index 7e6c8b22..3ae6c847 100644
  #define error_printf_check(...) if (config.report_invalid_cert) wget_error_printf(__VA_ARGS__)
  
  /**
-@@ -496,17 +508,23 @@ out:
- static int init;
- static wget_thread_mutex mutex;
- 
--static void __attribute__ ((constructor)) tls_init(void)
--{
--	if (!mutex)
--		wget_thread_mutex_init(&mutex);
--}
--
--static void __attribute__ ((destructor)) tls_exit(void)
-+static void tls_exit(void)
- {
- 	if (mutex)
- 		wget_thread_mutex_destroy(&mutex);
- }
-+INITIALIZER(tls_init)
-+{
-+	if (!mutex) {
-+		wget_thread_mutex_init(&mutex);
-+#ifdef DEBUG_WOLFSSL
-+		wolfSSL_Debugging_ON();
-+#endif // DEBUG_WOLFSSL
-+
-+		atexit(tls_exit);
-+	}
-+}
-+
- 
- /*
- static void set_credentials(gnutls_certificate_credentials_t *credentials)
-@@ -631,11 +649,18 @@ void wget_ssl_init(void)
- 
- 		if (config.check_certificate) {
- 			if (!wget_strcmp(config.ca_directory, "system"))
--				config.ca_directory = "/etc/ssl/certs";
--
-+				config.ca_directory = wget_ssl_default_cert_dir();
-+			if (config.ca_file && !wget_strcmp(config.ca_file, "system"))
-+				config.ca_file = wget_ssl_default_ca_bundle_path();
-+			const char* dir = config.ca_directory;
-+			const char* file = config.ca_file;
-+			if (dir && access(dir, F_OK))
-+				dir = NULL;
-+			else if (file && access(file, F_OK)) //yes else if, good to throw an error if neither are there, just don't want to do it if at least one exists
-+				file = NULL;
- 			// Load client certificates into WOLFSSL_CTX
--			if (wolfSSL_CTX_load_verify_locations(ssl_ctx, config.ca_file, config.ca_directory) != SSL_SUCCESS) {
--				error_printf(_("Failed to load %s, please check the file.\n"), config.ca_directory);
-+			if (wolfSSL_CTX_load_verify_locations(ssl_ctx, file, dir) != SSL_SUCCESS) {
-+				error_printf(_("Failed to load CA pem: %s or cert dir: %s, ssl verification will likely fail.\n"), config.ca_file, config.ca_directory);
- 				goto out;
- 			}
- 			wolfSSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
-@@ -846,7 +871,7 @@ static void ShowX509Chain(WOLFSSL_X509_CHAIN *chain, int count, const char *hdr)
+@@ -870,7 +876,7 @@ static void ShowX509Chain(WOLFSSL_X509_CHAIN *chain, int count, const char *hdr)
   */
  int wget_ssl_open(wget_tcp *tcp)
  {
@@ -447,7 +83,7 @@ index 7e6c8b22..3ae6c847 100644
  	wget_tls_stats_data stats = {
  			.alpn_protocol = NULL,
  			.version = -1,
-@@ -872,14 +897,14 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -896,14 +902,14 @@ int wget_ssl_open(wget_tcp *tcp)
  	sockfd= tcp->sockfd;
  	connect_timeout = tcp->connect_timeout;
  
@@ -464,7 +100,7 @@ index 7e6c8b22..3ae6c847 100644
  
  //	if (tcp->tls_false_start)
  //		info_printf(_("WolfSSL doesn't support TLS False Start\n"));
-@@ -891,7 +916,7 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -915,7 +921,7 @@ int wget_ssl_open(wget_tcp *tcp)
  		// wolfSSL_UseALPN() destroys the ALPN string (bad design pattern !)
  		alpn = wget_strmemcpy_a(alpnbuf, sizeof(alpnbuf), config.alpn, strlen(config.alpn));
  
@@ -473,7 +109,7 @@ index 7e6c8b22..3ae6c847 100644
  			debug_printf("ALPN offering %s\n", config.alpn);
  		} else
  			debug_printf("WolfSSL: Failed to set ALPN: %s\n", config.alpn);
-@@ -903,17 +928,20 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -927,17 +933,20 @@ int wget_ssl_open(wget_tcp *tcp)
  	// struct session_context *ctx = wget_calloc(1, sizeof(struct session_context));
  	// ctx->hostname = wget_strdup(hostname);
  
@@ -498,7 +134,7 @@ index 7e6c8b22..3ae6c847 100644
  
  	if (tls_stats_callback) {
  		long long after_millisecs = wget_get_timemillis();
-@@ -925,29 +953,29 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -949,29 +958,29 @@ int wget_ssl_open(wget_tcp *tcp)
  	const char *name;
  	int bits;
  	WOLFSSL_CIPHER *cipher;
@@ -537,7 +173,7 @@ index 7e6c8b22..3ae6c847 100644
  			debug_printf("WolfSSL: Failed to connect ALPN\n");
  		else {
  			debug_printf("WolfSSL: Server accepted ALPN protocol '%.*s'\n", (int) protocol_length, protocol);
-@@ -962,16 +990,16 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -986,16 +995,16 @@ int wget_ssl_open(wget_tcp *tcp)
  	}
  
  	if (ret == WGET_E_SUCCESS) {
@@ -557,7 +193,7 @@ index 7e6c8b22..3ae6c847 100644
  			if (!strcmp(tlsver, "TLSv1.2"))
  				stats.version = 4;
  			else if (!strcmp(tlsver, "TLSv1.3"))
-@@ -1005,11 +1033,11 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -1029,11 +1038,11 @@ int wget_ssl_open(wget_tcp *tcp)
  */		}
  	}
  
@@ -572,7 +208,7 @@ index 7e6c8b22..3ae6c847 100644
  		if (res >= 13 && res <= 29)
  			return WGET_E_CERTIFICATE;
  		else
-@@ -1029,7 +1057,9 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -1053,7 +1062,9 @@ int wget_ssl_open(wget_tcp *tcp)
  			debug_printf("Handshake timed out\n");
  		// xfree(ctx->hostname);
  		// xfree(ctx);
@@ -583,7 +219,7 @@ index 7e6c8b22..3ae6c847 100644
  		tcp->ssl_session = NULL;
  	}
  
-@@ -1047,18 +1077,20 @@ int wget_ssl_open(wget_tcp *tcp)
+@@ -1071,18 +1082,20 @@ int wget_ssl_open(wget_tcp *tcp)
  void wget_ssl_close(void **session)
  {
  	if (session && *session) {
@@ -608,7 +244,7 @@ index 7e6c8b22..3ae6c847 100644
  		*session = NULL;
  	}
  }
-@@ -1086,14 +1118,16 @@ void wget_ssl_close(void **session)
+@@ -1110,14 +1123,16 @@ void wget_ssl_close(void **session)
   */
  ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeout)
  {
@@ -631,7 +267,7 @@ index 7e6c8b22..3ae6c847 100644
  				break;
  		} else
  			break;
-@@ -1159,14 +1193,15 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
+@@ -1183,14 +1198,15 @@ ssize_t wget_ssl_read_timeout(void *session, char *buf, size_t count, int timeou
   */
  ssize_t wget_ssl_write_timeout(void *session, const char *buf, size_t count, int timeout)
  {
@@ -652,85 +288,3 @@ index 7e6c8b22..3ae6c847 100644
  				break;
  		} else
  			break;
-diff --git a/libwget/utils.c b/libwget/utils.c
-index 06824e9f..b823bdf0 100644
---- a/libwget/utils.c
-+++ b/libwget/utils.c
-@@ -34,8 +34,10 @@
- #include <time.h>
- #include <glob.h>
- 
-+#include <stdbool.h>
- #include "c-ctype.h"
- #include "c-strcase.h"
-+#include "filename.h"
- 
- #if defined __clang__
-   // silence warnings in gnulib code
-@@ -62,6 +64,38 @@
-  * They may be useful to other developers that is why they are exported.
-  */
- 
-+static const char * ssl_default_path(bool bundleNotDir)
-+{
-+#ifndef _WIN32
-+	return bundleNotDir ? NULL : "/etc/ssl/certs";
-+#else
-+	static char CERTDIR_PATH[MAX_PATH] = {0};
-+	static char CERTBUNDLE_PATH[MAX_PATH] = { 0 };
-+	char* buffer = bundleNotDir ? CERTBUNDLE_PATH : CERTDIR_PATH;
-+	if (buffer[0]) //we could end up with a partial or incorrect path with multiple threads
-+		return buffer;
-+	wget_strscpy(buffer, "/etc/ssl/certs", MAX_PATH);
-+
-+	if (access(buffer, F_OK)) {
-+		const char* progData = getenv("ProgramData");
-+		if (!progData)
-+			progData = "/ProgramData";
-+		const char* dir_separator_str = (char[]){ DIR_SEPARATOR, '\0' };
-+		sprintf_s(buffer, MAX_PATH, "%s%s%s%c%s%s", progData, ISSLASH(progData[strlen(progData - 1)]) ? "" : dir_separator_str, "ssl", DIR_SEPARATOR, bundleNotDir ? "ca-bundle.pem" : "certs", bundleNotDir ? "" : dir_separator_str);
-+	}
-+	return buffer;
-+#endif
-+}
-+const char* wget_ssl_default_cert_dir()
-+{
-+	return ssl_default_path(false);
-+}
-+
-+const char* wget_ssl_default_ca_bundle_path()
-+{
-+	return ssl_default_path(true);
-+
-+}
- /**
-  * \param[in] s1 String
-  * \param[in] s2 String
-diff --git a/src/options.c b/src/options.c
-index 3fbf3f58..920b934c 100644
---- a/src/options.c
-+++ b/src/options.c
-@@ -1223,6 +1223,7 @@ static int print_plugin_help(WGET_GCC_UNUSED option_t opt,
- }
- 
- // default values for config options (if not 0 or NULL)
-+// WARNING: any constant strings used here must be wget_strdup in init as we may call xfree on them later
- struct config config = {
- 	.auth_no_challenge = false,
- 	.connect_timeout = -1,
-@@ -1240,6 +1241,7 @@ struct config config = {
- 	.private_key_type = WGET_SSL_X509_FMT_PEM,
- 	.secure_protocol = "AUTO",
- 	.ca_directory = "system",
-+	.ca_cert = "system",
- 	.cookies = 1,
- 	.keep_alive = 1,
- 	.use_server_timestamps = 1,
-@@ -3314,6 +3316,7 @@ int init(int argc, const char **argv)
- 	config.user_agent = wget_strdup(config.user_agent);
- 	config.secure_protocol = wget_strdup(config.secure_protocol);
- 	config.ca_directory = wget_strdup(config.ca_directory);
-+	config.ca_cert = wget_strdup(config.ca_cert);
- 	config.default_page = wget_strdup(config.default_page);
- 	config.system_config = wget_strdup(config.system_config);
- 

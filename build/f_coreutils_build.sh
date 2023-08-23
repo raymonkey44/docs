@@ -44,7 +44,7 @@ fi
 			sed -i -E "s/WORD/GNUWORD/g" src/fmt.c
 			SKIP_STEP=""
 		fi
-		
+		cd $BLD_CONFIG_SRC_FOLDER
 
 		if [[ -z $SKIP_STEP || $SKIP_STEP == "bootstrap" ]]; then
 			gnulib_add_addl_modules_to_bootstrap;		
@@ -58,6 +58,7 @@ fi
 		autoreconf --symlink --verbose --install
 		SKIP_STEP=""
 	fi
+
 	cd $BLD_CONFIG_SRC_FOLDER
 	if [[ -z $SKIP_STEP || $SKIP_STEP == "configure" ]]; then
 		configure_fixes;
